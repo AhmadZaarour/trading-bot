@@ -129,68 +129,30 @@ def is_rsi_bullish_divergence(df, i, rsi_window=14):
 
     return True
 
-def is_fib_bounce(df, i, lookback=7):
-    if i < lookback:
+def is_fib_bounce(df, i, lookback=7, tolerance=0.001):
+    if i < lookback or i >= len(df):
         return False
 
-    # Define swing high and low in the last `lookback` candles
-    recent_high = df["high"].iloc[i - lookback:i].max()
     recent_low = df["low"].iloc[i - lookback:i].min()
+    recent_high = df["high"].iloc[i - lookback:i].max()
 
-    # Calculate key Fibonacci levels
-    fib_382 = recent_high - (recent_high - recent_low) * 0.382
-    fib_618 = recent_high - (recent_high - recent_low) * 0.618
+    # Ensure it's an uptrend swing (low before high)
+    if recent_high <= recent_low:
+        return False
 
-    # Check if current price is bouncing within that zone
-    current_price = df.iloc[i - 1]["close"]
-    return fib_618 <= current_price <= fib_382
+    fib_382 = recent_low + (recent_high - recent_low) * 0.382
+    fib_618 = recent_low + (recent_high - recent_low) * 0.618
 
-"""def get_support_resistance_levels(df, lookback=20, tolerance=0.0025):
-    levels = []
-    for i in range(lookback, len(df) - lookback):
-        high = df["high"].iloc[i]
-        low = df["low"].iloc[i]
+    curr = df.iloc[i]
+    prev = df.iloc[i - 1]
 
-        is_resistance = all(high > df["high"].iloc[i - j] and high > df["high"].iloc[i + j] for j in range(1, 3))
-        is_support = all(low < df["low"].iloc[i - j] and low < df["low"].iloc[i + j] for j in range(1, 3))
+    # Check if price recently entered fib zone (wick or close)
+    in_zone_prev = fib_382 <= prev["low"] <= fib_618 or fib_382 <= prev["close"] <= fib_618
+    # Rejection if now we’re back above fib_618 (close confirmation)
+    rejection = curr["close"] > fib_618 * (1 + tolerance)
 
-        if is_resistance:
-            levels.append(high)
-        elif is_support:
-            levels.append(low)
+    return in_zone_prev and rejection
 
-    # Remove duplicates and merge nearby levels
-    clean_levels = []
-    for level in levels:
-        if not any(abs(level - existing) / existing < tolerance for existing in clean_levels):
-            clean_levels.append(level)
-
-    return clean_levels"""
-
-def support_levels(df, i, lookback=20):
-    support = []
-
-    if i < lookback or i >= len(df):
-        return support
-    
-    low = df["low"].iloc[i]
-
-    support_lvl = df["low"].iloc[i - lookback:i].min()
-
-    if support_lvl <= low * 0.95:
-        support.append(support_lvl)
-    return support
-
-def levels(df, i, lookback=10):
-    support = []
-    if i < lookback or i >= len(df):
-        return support
-
-    # A swing low = current low lower than 'lookback' bars before and after
-    window = df["low"].iloc[i-lookback:i]
-    if df["low"].iloc[i] > window.max():
-        support.append(window.mean())
-    return support
 
 import numpy as np
 

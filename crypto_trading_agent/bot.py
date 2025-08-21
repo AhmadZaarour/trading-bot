@@ -285,19 +285,19 @@ def evaluate_trade_confluence(df: pd.DataFrame, i: int) -> Dict[str, Any]:
     rr_short_ok = rr_short >= 2.0
 
     # Decide
-    if trend_long:
+    if trend_long and momentum_long and atr_ok and rr_long_ok:
         score = (
             #bull_pattern * 0.5
-            #+ bull_ind["fib_bounce"] * 0.5
             #bull_ind["sr_confluence"] * 2
             bull_ind["flag_pattern"] * 0.75
+            + bull_ind["fib_bounce"] * 0.25
             + bull_ind["triangle_confluence"] * 0.5
             + bull_ind["rising_triangle"] * 0.75
             + bull_ind["rising_wedge"] * 0.75
-            + bull_ind["double_bottom"] * 0.5
+            #+ bull_ind["double_bottom"] * 0.5
             + bull_ind["rsi_divergence"] * 0.5
         )
-        if score >= 0:
+        if score >= 1.25:
             return {
                 "signal": "long",
                 "entry": float(entry),
@@ -305,19 +305,19 @@ def evaluate_trade_confluence(df: pd.DataFrame, i: int) -> Dict[str, Any]:
                 "tp": float(tp_long),
                 "rr": float(rr_long),
             }
-    if trend_short:
+    if trend_short and momentum_short and atr_ok and rr_short_ok:
         score = (
             #bear_pattern * 0.5
-            #+ bear_ind["fib_bounce"] * 0.5
             #bear_ind["sr_confluence"] * 2
             bear_ind["flag_pattern"] * 0.75
+            + bear_ind["fib_bounce"] * 0.25
             + bear_ind["triangle_confluence"] * 0.5
             + bear_ind["falling_triangle"] * 0.75
             + bear_ind["falling_wedge"] * 0.75
-            + bear_ind["double_top"] * 0.5
+            #+ bear_ind["double_top"] * 0.5
             + bear_ind["rsi_divergence"] * 0.5
         )
-        if score >= 0:
+        if score >= 1.25:
             return {
                 "signal": "short",
                 "entry": float(entry),

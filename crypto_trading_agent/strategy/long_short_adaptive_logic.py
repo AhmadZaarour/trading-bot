@@ -113,12 +113,12 @@ def evaluate_trade_confluence(df, i, prev2, prev1, curr, volume_ma, entry, tp_lo
 
 
     # === 1. Trend filter ===
-    trend_long = curr["ema_50"] > curr["ema_200"]
-    trend_short = curr["ema_50"] < curr["ema_200"]
+    trend_long = abs(curr["ema_50"] - curr["ema_200"]) < 0.1
+    trend_short = abs(curr["ema_50"] - curr["ema_200"]) < 0.1
 
     # === 2. Momentum filter ===
-    momentum_long = (curr["macd_line"] > curr["macd_signal"] and curr["rsi"] > 50) or (curr["rsi"] < 30 and curr["macd_line"] > curr["macd_signal"])
-    momentum_short = (curr["macd_line"] < curr["macd_signal"] and curr["rsi"] < 50) or (curr["rsi"] > 70 and curr["macd_line"] < curr["macd_signal"])
+    momentum_long = (curr["macd_line"] > curr["macd_signal"] and curr["rsi"] >= 48) or (curr["rsi"] < 30 and curr["macd_line"] > curr["macd_signal"])
+    momentum_short = (curr["macd_line"] < curr["macd_signal"] and curr["rsi"] < 48) or (curr["rsi"] > 70 and curr["macd_line"] < curr["macd_signal"])
 
 
     # === 3. Volatility filter ===
@@ -146,7 +146,7 @@ def evaluate_trade_confluence(df, i, prev2, prev1, curr, volume_ma, entry, tp_lo
             + bull_ind["triangle_confluence"] * 0.5
             + bull_ind["rising_triangle"] * 0.75
             + bull_ind["rising_wedge"] * 0.75
-            + bull_ind["double_bottom"] * 0.5
+            #+ bull_ind["double_bottom"] * 0.5
             + bull_ind["rsi_divergence"] * 0.5
         )
         if score >= 1:
@@ -187,7 +187,7 @@ def evaluate_trade_confluence(df, i, prev2, prev1, curr, volume_ma, entry, tp_lo
             + bear_ind["triangle_confluence"] * 0.5
             + bear_ind["falling_triangle"] * 0.75
             + bear_ind["falling_wedge"] * 0.75
-            + bear_ind["double_top"] * 0.5
+            #+ bear_ind["double_top"] * 0.5
             + bear_ind["rsi_divergence"] * 0.5
         )
         if score >= 1:

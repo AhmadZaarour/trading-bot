@@ -151,27 +151,30 @@ def is_rsi_bearish_divergence(df, i, rsi_window=14):
 
     return True
 
-def is_fib_bounce_bearish(df, i, lookback=7):
+def is_fib_bounce_bearish(df, i, lookback=7, tolerance=0.001):
     if i < lookback or i >= len(df):
         return False
-    # For bearish: look for price retracing upward to a Fibonacci resistance zone after a down move
-    # Define swing high and low in the last `lookback` candles (bearish: high first, then low)
+
     recent_high = df["high"].iloc[i - lookback:i].max()
     recent_low = df["low"].iloc[i - lookback:i].min()
 
-    # Calculate key Fibonacci retracement levels from high to low
+    # Ensure it’s a downtrend swing (high before low)
+    if recent_low >= recent_high:
+        return False
+
     fib_382 = recent_high - (recent_high - recent_low) * 0.382
     fib_618 = recent_high - (recent_high - recent_low) * 0.618
 
-    # Check if current price is bouncing down from that zone (bearish rejection)
-    current_price = df.iloc[i]["close"]
-    prev_close = df.iloc[i - 1]["close"] if i > 0 else current_price
+    curr = df.iloc[i]
+    prev = df.iloc[i - 1]
 
-    # Bearish rejection: price enters the zone and then closes below it
-    in_zone_prev = fib_618 <= prev_close <= fib_382
-    out_zone_now = current_price < fib_618
+    # Check if price recently entered fib zone (wick or close)
+    in_zone_prev = fib_618 <= prev["high"] <= fib_382 or fib_618 <= prev["close"] <= fib_382
+    # Rejection if now we’re back below fib_618 (close confirmation)
+    rejection = curr["close"] < fib_618 * (1 - tolerance)
 
-    return in_zone_prev and out_zone_now
+    return in_zone_prev and rejection
+
 
 def is_double_top(df, i, window=5):
     if i < window:
@@ -263,30 +266,6 @@ def is_falling_triangle(df, i, window=10):
     lows_descending = all(lows[j] > lows[j + 1] for j in range(len(lows) - 1))
 
     return highs_flat_or_descending and lows_descending
-
-def resistance_levels(df, i, lookback=20):
-    resistance = []
-
-    if i < lookback or i >= len(df):
-        return resistance
-    
-    high = df["high"].iloc[i]
-
-    resistance_lvl = df["high"].iloc[i - lookback:i].max()
-
-    if resistance_lvl >= high * 1.05:
-        resistance.append(resistance_lvl)
-    return resistance
-
-def levels(df, i, lookback=10):
-    resistance = []
-    if i < lookback or i >= len(df)-lookback:
-        return resistance
-
-    window = df["high"].iloc[i-lookback:i]
-    if df["high"].iloc[i] < window.min():
-        resistance.append(window.mean())
-    return resistance
 
 import numpy as np
 

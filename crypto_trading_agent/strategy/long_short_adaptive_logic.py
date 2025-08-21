@@ -117,8 +117,8 @@ def evaluate_trade_confluence(df, i, prev2, prev1, curr, volume_ma, entry, tp_lo
     trend_short = abs(curr["ema_50"] - curr["ema_200"]) < 0.1
 
     # === 2. Momentum filter ===
-    momentum_long = (curr["macd_line"] > curr["macd_signal"] and curr["rsi"] >= 48) or (curr["rsi"] < 30 and curr["macd_line"] > curr["macd_signal"])
-    momentum_short = (curr["macd_line"] < curr["macd_signal"] and curr["rsi"] < 48) or (curr["rsi"] > 70 and curr["macd_line"] < curr["macd_signal"])
+    momentum_long = (curr["macd_line"] > curr["macd_signal"] and curr["rsi"] >= 50) or (curr["rsi"] < 30 and curr["macd_line"] > curr["macd_signal"])
+    momentum_short = (curr["macd_line"] < curr["macd_signal"] and curr["rsi"] < 50) or (curr["rsi"] > 70 and curr["macd_line"] < curr["macd_signal"])
 
 
     # === 3. Volatility filter ===
@@ -140,16 +140,16 @@ def evaluate_trade_confluence(df, i, prev2, prev1, curr, volume_ma, entry, tp_lo
     if trend_long and momentum_long and atr_ok and rr_long_ok:
         score = (
             #bull_pattern * 0.5
-            #+ bull_ind["fib_bounce"] * 0.5
             #bull_ind["sr_confluence"] * 2
             bull_ind["flag_pattern"] * 0.75
+            + bull_ind["fib_bounce"] * 0.25
             + bull_ind["triangle_confluence"] * 0.5
             + bull_ind["rising_triangle"] * 0.75
             + bull_ind["rising_wedge"] * 0.75
             #+ bull_ind["double_bottom"] * 0.5
             + bull_ind["rsi_divergence"] * 0.5
         )
-        if score >= 1:
+        if score >= 1.25:
             
             trade = {
                 "signal": "long",
@@ -181,16 +181,16 @@ def evaluate_trade_confluence(df, i, prev2, prev1, curr, volume_ma, entry, tp_lo
     elif trend_short and momentum_short and atr_ok and rr_short_ok:
         score = (
             #bear_pattern * 0.5
-            #+ bear_ind["fib_bounce"] * 0.5
             #bear_ind["sr_confluence"] * 2
             bear_ind["flag_pattern"] * 0.75
+            + bear_ind["fib_bounce"] * 0.25
             + bear_ind["triangle_confluence"] * 0.5
             + bear_ind["falling_triangle"] * 0.75
             + bear_ind["falling_wedge"] * 0.75
             #+ bear_ind["double_top"] * 0.5
             + bear_ind["rsi_divergence"] * 0.5
         )
-        if score >= 1:
+        if score >= 1.25:
             trade = {
                 "signal": "short",
                 "entry": entry,

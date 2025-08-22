@@ -1,6 +1,5 @@
 from data.fetcher import fetch_ohlcv
 from indicators.calculator import add_indicators
-from strategy.trade_logic import analyze_row
 from strategy.adaptive_trade_logic import analyze_row_dynamic
 from executor.simulator import simulate_trades
 import pandas as pd

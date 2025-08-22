@@ -127,12 +127,8 @@ def get_bearish_indicators(df, i, prev2, prev1, curr, volume_ma):
     has_bearish_pattern = any([
         is_bearish_engulfing(prev1, curr),
         is_hanging_man(curr),
-        #is_shooting_star(curr),
-        #is_dark_cloud_cover(prev1, curr),
         is_three_black_crows(prev2, prev1, curr),
         is_bearish_harami(prev1, curr),
-        #is_bearish_marubozu(curr),
-        #is_bearish_belt_hold(curr),
         is_tweezer_top(prev1, curr),
         is_bearish_three_inside_down(prev2, prev1, curr)
     ])
@@ -167,12 +163,8 @@ def get_bullish_indicators(df, i, prev2, prev1, curr, volume_ma):
     has_bullish_pattern = any([
         is_bullish_engulfing(prev1, curr),
         is_hammer(curr),
-        #is_morning_star(prev2, prev1, curr),
-        #is_piercing_line(prev1, curr),
         is_three_white_soldiers(prev2, prev1, curr),
         is_bullish_harami(prev1, curr),
-        #is_bullish_marubozu(curr),
-        #is_bullish_belt_hold(curr),
         is_tweezer_bottom(prev1, curr),
         is_bullish_three_inside_up(prev2, prev1, curr)
     ])
@@ -258,8 +250,8 @@ def evaluate_trade_confluence(df: pd.DataFrame, i: int) -> Dict[str, Any]:
     )
 
     # --- Get bullish + bearish pattern signals
-    bull_pattern, bull_ind, bull_sr = get_bullish_indicators(df, i, prev2, prev1, curr, volume_ma)
-    bear_pattern, bear_ind, bear_sr = get_bearish_indicators(df, i, prev2, prev1, curr, volume_ma)
+    _, bull_ind, _ = get_bullish_indicators(df, i, prev2, prev1, curr, volume_ma)
+    _, bear_ind, _ = get_bearish_indicators(df, i, prev2, prev1, curr, volume_ma)
 
     # Trend
     trend_long = curr["ema_50"] > curr["ema_200"]
@@ -287,14 +279,11 @@ def evaluate_trade_confluence(df: pd.DataFrame, i: int) -> Dict[str, Any]:
     # Decide
     if trend_long and momentum_long and atr_ok and rr_long_ok:
         score = (
-            #bull_pattern * 0.5
-            #bull_ind["sr_confluence"] * 2
             bull_ind["flag_pattern"] * 0.75
             + bull_ind["fib_bounce"] * 0.25
             + bull_ind["triangle_confluence"] * 0.5
             + bull_ind["rising_triangle"] * 0.75
             + bull_ind["rising_wedge"] * 0.75
-            #+ bull_ind["double_bottom"] * 0.5
             + bull_ind["rsi_divergence"] * 0.5
         )
         if score >= 1.25:
@@ -307,14 +296,11 @@ def evaluate_trade_confluence(df: pd.DataFrame, i: int) -> Dict[str, Any]:
             }
     if trend_short and momentum_short and atr_ok and rr_short_ok:
         score = (
-            #bear_pattern * 0.5
-            #bear_ind["sr_confluence"] * 2
             bear_ind["flag_pattern"] * 0.75
             + bear_ind["fib_bounce"] * 0.25
             + bear_ind["triangle_confluence"] * 0.5
             + bear_ind["falling_triangle"] * 0.75
             + bear_ind["falling_wedge"] * 0.75
-            #+ bear_ind["double_top"] * 0.5
             + bear_ind["rsi_divergence"] * 0.5
         )
         if score >= 1.25:

@@ -6,10 +6,10 @@ def analyze_row_dynamic(prev2, prev1, curr, volume_ma, i, df):
     entry = curr["close"]
     _,_,r_levels = get_bearish_indicators(df, i, prev2, prev1, curr, volume_ma)
     _,_,s_levels = get_bullish_indicators(df, i, prev2, prev1, curr, volume_ma)
-    window = 14
-    start = max(0, i - window)
-    recent_closes = df["close"].iloc[start:i+1]
-    volatility = np.std(recent_closes)
+    #window = 14
+    #start = max(0, i - window)
+    #recent_closes = df["close"].iloc[start:i+1]
+    #volatility = np.std(recent_closes)
     atr = curr["atr"]  # already computed in add_indicators
     tp_long, sl_long, tp_short, sl_short = dynamic_tp_sl(
         entry=curr["close"],

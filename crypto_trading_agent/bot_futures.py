@@ -31,7 +31,7 @@ client.API_URL = "https://testnet.binancefuture.com/fapi/v1"
 # ===============================
 SYMBOL = "XRPUSDT"
 INTERVAL = Client.KLINE_INTERVAL_1MINUTE  # 1m
-LOOKBACK = 350            # candles to feed strategy
+LOOKBACK = 250            # candles to feed strategy
 RISK_PER_TRADE = 0.02
 MAX_LEVERAGE = 5
 MAX_BARS_PER_TRADE = 20   # exit if exceeded
@@ -551,16 +551,16 @@ def main():
 
                     open_trade = {
                     "signal": trade["signal"],  # long/short
-                    "side": side,
+                    "side": side,               # buy/sell
                     "entry_time": datetime.now(timezone.utc),
                     "bars_open": 0,
                     "sl": stop_price,
                     "tp": tp_price,
-                    "qty": qty
+                    "qty": qty                  # position size
                 }
 
 
-                    print(f" opened trade: [{datetime.now(timezone.utc)}] Entered {trade['signal']} qty={qty} entry≈{entry_price} SL={stop_price} TP={tp_price}")
+                    print(f" opened trade: [{datetime.now(timezone.utc)}] Entered {trade['signal']} | qty={qty} amount USDT={qty*entry_price} | entry≈{entry_price} | SL={stop_price} | TP={tp_price}")
                 print("trade ordered ...")
 
         except Exception as e:

@@ -1,27 +1,21 @@
 from binance.client import Client
 import pandas as pd
-import os
-from datetime import datetime
 
-# You can replace these with real keys or use a .env file
-API_KEY = os.getenv("BINANCE_API_KEY")
-API_SECRET = os.getenv("BINANCE_API_SECRET")
-
-client = Client(API_KEY, API_SECRET)
-
-def fetch_ohlcv(symbol, interval, limit):
-    klines = client.futures_klines(symbol=symbol, interval=interval, limit=limit)
-    
-    df = pd.DataFrame(klines, columns=[
-        "timestamp", "open", "high", "low", "close", "volume",
-        "close_time", "quote_asset_volume", "num_trades",
-        "taker_buy_base", "taker_buy_quote", "ignore"
+# ===============================
+# Helpers: OHLCV / Indicators
+# ===============================
+def fetch_ohlcv(symbol: str, interval: str, limit: int, client) -> pd.DataFrame:
+    """Closed klines only -> DataFrame indexed by timestamp with ohlcv floats."""
+    kl = client.futures_klines(symbol=symbol, interval=interval, limit=limit)
+    df = pd.DataFrame(kl, columns=[
+        "open_time","open","high","low","close","volume",
+        "close_time","quote_asset_volume","num_trades",
+        "taker_buy_base","taker_buy_quote","ignore"
     ])
-    
-    df["timestamp"] = pd.to_datetime(df["timestamp"], unit='ms')
-    df.set_index("timestamp", inplace=True)
-    
-    numeric_cols = ["open", "high", "low", "close", "volume"]
-    df[numeric_cols] = df[numeric_cols].astype(float)
-    
-    return df[numeric_cols]
+    df["open_time"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
+    df["close_time"] = pd.to_datetime(df["close_time"], unit="ms", utc=True)
+    df.set_index("close_time", inplace=True)  # align to candle close
+
+    num_cols = ["open","high","low","close","volume"]
+    df[num_cols] = df[num_cols].astype(float)
+    return df[num_cols]

@@ -268,29 +268,21 @@ def is_falling_triangle(df, i, window=10):
     return highs_flat_or_descending and lows_descending
 
 import numpy as np
+import pandas as pd
+from typing import List
 
-def get_resistance_levels(df, i, lookback=10, min_touches=3, tolerance=0.01):
-    """
-    Real-time friendly resistance detection:
-    - Finds clusters of highs in the last `lookback` bars
-    - Requires at least `min_touches` within tolerance
-    - Returns strongest resistance (avg of cluster with most touches)
-    """
+def get_resistance_levels(df: pd.DataFrame, i: int, lookback=10, min_touches=3, tolerance=0.01) -> List[float]:
+    """Cluster highs in the last `lookback` bars; return strongest resistance."""
     if i < lookback:
         return []
-
-    highs = df["high"].iloc[i-lookback:i].values
-    resistance_candidates = []
-
-    for high in highs:
-        # count how many highs are within tolerance of this one
-        cluster = [x for x in highs if abs(x - high) / high <= tolerance]
+    highs = df["high"].iloc[i - lookback : i].values
+    candidates = []
+    for hv in highs:
+        cluster = [x for x in highs if abs(x - hv) / hv <= tolerance]
         if len(cluster) >= min_touches:
-            # store cluster avg
-            resistance_candidates.append(np.mean(cluster))
-
-    if resistance_candidates:
-        # return most frequent (mode-like)
-        return [min(resistance_candidates, key=lambda x: abs(x - np.median(resistance_candidates)))]
-    
+            candidates.append(float(np.mean(cluster)))
+    if candidates:
+        med = float(np.median(candidates))
+        best = min(candidates, key=lambda x: abs(x - med))
+        return [best]
     return []

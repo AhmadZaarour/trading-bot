@@ -155,31 +155,24 @@ def is_fib_bounce(df, i, lookback=7, tolerance=0.001):
 
 
 import numpy as np
+import pandas as pd
+from typing import List
 
-def get_support_levels(df, i, lookback=10, min_touches=3, tolerance=0.01):
-    """
-    Real-time friendly support detection:
-    - Finds clusters of lows in the last `lookback` bars
-    - Requires at least `min_touches` within tolerance
-    - Returns strongest support (avg of cluster with most touches)
-    """
+def get_support_levels(df: pd.DataFrame, i: int, lookback=10, min_touches=3, tolerance=0.01) -> List[float]:
+    """Cluster lows in the last `lookback` bars; return strongest support."""
     if i < lookback:
         return []
-
-    lows = df["low"].iloc[i-lookback:i].values
-    support_candidates = []
-
-    for low in lows:
-        # count how many lows are within tolerance of this one
-        cluster = [x for x in lows if abs(x - low) / low <= tolerance]
+    lows = df["low"].iloc[i - lookback : i].values
+    candidates = []
+    for lv in lows:
+        cluster = [x for x in lows if abs(x - lv) / lv <= tolerance]
         if len(cluster) >= min_touches:
-            # store cluster avg
-            support_candidates.append(np.mean(cluster))
-
-    if support_candidates:
-        # return most frequent (mode-like)
-        return [min(support_candidates, key=lambda x: abs(x - np.median(support_candidates)))]
-    
+            candidates.append(float(np.mean(cluster)))
+    if candidates:
+        # choose representative near median (stable)
+        med = float(np.median(candidates))
+        best = min(candidates, key=lambda x: abs(x - med))
+        return [best]
     return []
 
 def get_oblique_support(df, i, window=10, min_points=3, tolerance=0.01):

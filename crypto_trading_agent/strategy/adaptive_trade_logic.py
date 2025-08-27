@@ -23,6 +23,9 @@ def analyze_row_dynamic(prev2, prev1, curr, volume_ma, i, df):
 
 from typing import List, Tuple
 
+# ===============================
+# Dynamic TP/SL (ATR + S/R)
+# ===============================
 def dynamic_tp_sl(
     entry: float,
     r_levels: List[float],
@@ -30,39 +33,30 @@ def dynamic_tp_sl(
     atr: float,
     atr_mult_sl: float = 1.0,
     atr_mult_tp: float = 2.0,
-    tolerance: float = 2,  # max multiple of ATR allowed for S/R override
+    tolerance_atr_mult: float = 2.0,  # only accept S/R within 2*ATR of entry
 ) -> Tuple[float, float, float, float]:
-    """
-    ATR-based TP/SL with S/R confluence preference.
-    Returns: (tp_long, sl_long, tp_short, sl_short)
-    """
-
-    # Raw ATR targets
     sl_long_raw = entry - atr_mult_sl * atr
     tp_long_raw = entry + atr_mult_tp * atr
     sl_short_raw = entry + atr_mult_sl * atr
     tp_short_raw = entry - atr_mult_tp * atr
 
-    # Nearest S/R
     nearest_res_above = min([r for r in (r_levels or []) if r > entry], default=None)
     nearest_sup_below = max([s for s in (s_levels or []) if s < entry], default=None)
 
-    # --- LONG ---
+    # Long
     sl_long = sl_long_raw
-    if nearest_sup_below and (entry - nearest_sup_below) <= tolerance * atr:
-        sl_long = nearest_sup_below  # use support if reasonably close
-
+    if nearest_sup_below and (entry - nearest_sup_below) <= tolerance_atr_mult * atr:
+        sl_long = nearest_sup_below
     tp_long = tp_long_raw
-    if nearest_res_above and (nearest_res_above - entry) <= tolerance * atr:
-        tp_long = nearest_res_above  # use resistance if reasonably close
+    if nearest_res_above and (nearest_res_above - entry) <= tolerance_atr_mult * atr:
+        tp_long = nearest_res_above
 
-    # --- SHORT ---
+    # Short
     sl_short = sl_short_raw
-    if nearest_res_above and (nearest_res_above - entry) <= tolerance * atr:
-        sl_short = nearest_res_above  # use resistance if close
-
+    if nearest_res_above and (nearest_res_above - entry) <= tolerance_atr_mult * atr:
+        sl_short = nearest_res_above
     tp_short = tp_short_raw
-    if nearest_sup_below and (entry - nearest_sup_below) <= tolerance * atr:
-        tp_short = nearest_sup_below  # use support if close
+    if nearest_sup_below and (entry - nearest_sup_below) <= tolerance_atr_mult * atr:
+        tp_short = nearest_sup_below
 
-    return tp_long, sl_long, tp_short, sl_short
+    return float(tp_long), float(sl_long), float(tp_short), float(sl_short)

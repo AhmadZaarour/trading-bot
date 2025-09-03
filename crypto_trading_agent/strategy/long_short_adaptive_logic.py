@@ -1,6 +1,6 @@
 # short_trade_logic.py
-from .patterns_short import *
-from .patterns_long import *
+from ..indicators.patterns_short import *
+from ..indicators.patterns_long import *
 
 # ==== Utility ====
 def has_resistance(r_level):

@@ -20,7 +20,7 @@ client.API_URL = "https://testnet.binancefuture.com/fapi/v1"
 # Parameters
 # ===============================
 SYMBOL = "XRPUSDT"
-INTERVAL = Client.KLINE_INTERVAL_1MINUTE  # 1m
+INTERVAL = client.KLINE_INTERVAL_1MINUTE  # 1m
 LOOKBACK = 250            # candles to feed strategy
 RISK_PER_TRADE = 0.02
 MAX_LEVERAGE = 5

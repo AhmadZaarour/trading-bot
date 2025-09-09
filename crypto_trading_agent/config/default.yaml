@@ -2,7 +2,7 @@ mode: live   # live | paper | backtest
 SYMBOL: XRPUSDT
 LOOKBACK: 250
 POLL_SECONDS: 30
-INTERVAL: 1m
+INTERVAL: 1h
 RISK:
   RISK_PER_TRADE: 0.02
   MAX_LEVERAGE: 5

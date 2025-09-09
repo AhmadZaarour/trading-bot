@@ -30,7 +30,7 @@ class RiskManager():
 
         # Leverage cap (with safety buffer for fees/slippage)
         max_qty_leverage = (balance * leverage * safety) / entry_price
-        qty = (min(qty_risk, max_qty_leverage))
+        qty = (min(qty_risk, max_qty_leverage)) * 0.02
 
         # Round to step and enforce exchange minimums
         qty = self.broker.round_step(qty, step)

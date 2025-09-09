@@ -29,7 +29,6 @@ class Engine:
         print("Starting engine...")
         while True:
             try:
-                print(self.interval)
                 df = self.data.latest_df(self.symbol, self.interval, self.lookback)
                 if df.empty:
                     time.sleep(self.poll_seconds)
@@ -42,7 +41,6 @@ class Engine:
                     continue
 
                 self.last_seen_close = latest_close_time
-                i = len(df) - 1
 
                 current_position = self.broker.get_position(self.symbol)
 
@@ -94,8 +92,6 @@ class Engine:
 
                             if order:
                                 self.broker.place_exit_orders(self.symbol, side, qty, sl, tp)
-                                self.open_trade = trade
-                                self.open_trade["entry_time"] = datetime.now(timezone.utc)
                                 print("SL/TP orders placed.")
 
                                 self.open_trade = {
@@ -106,7 +102,7 @@ class Engine:
                                     "bars_open": 0,
                                     "sl": sl,
                                     "tp": tp,
-                                    "entry_time": self.open_trade["entry_time"]
+                                    "entry_time": datetime.now(timezone.utc)
                                 }
 
                                 print(f"Opened {side} trade: {self.open_trade}")

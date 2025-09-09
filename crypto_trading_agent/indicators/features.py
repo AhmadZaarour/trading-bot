@@ -45,18 +45,18 @@ def dynamic_tp_sl(
     # Long
     sl_long = sl_long_raw
     if nearest_sup_below and (entry - nearest_sup_below) <= tolerance_atr_mult * atr:
-        sl_long = nearest_sup_below
+        sl_long = nearest_sup_below * 0.99
     tp_long = tp_long_raw
     if nearest_res_above and (nearest_res_above - entry) <= tolerance_atr_mult * atr:
-        tp_long = nearest_res_above
+        tp_long = nearest_res_above * 1.02
 
     # Short
     sl_short = sl_short_raw
     if nearest_res_above and (nearest_res_above - entry) <= tolerance_atr_mult * atr:
-        sl_short = nearest_res_above
+        sl_short = nearest_res_above * 1.01
     tp_short = tp_short_raw
     if nearest_sup_below and (entry - nearest_sup_below) <= tolerance_atr_mult * atr:
-        tp_short = nearest_sup_below
+        tp_short = nearest_sup_below * 0.98
 
     return float(tp_long), float(sl_long), float(tp_short), float(sl_short)
 

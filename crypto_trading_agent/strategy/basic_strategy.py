@@ -191,7 +191,7 @@ class MyStrategy(Strategy):
         rr_short_ok = rr_short >= 2.0
 
         # --- Long setup
-        if trend_long and rr_long_ok:
+        if trend_long:
             score = (
                 #bull_pattern * 0.5
                 #bull_ind["sr_confluence"] * 2
@@ -232,7 +232,7 @@ class MyStrategy(Strategy):
                 }
 
         # --- Short setup
-        elif trend_short and rr_short_ok:
+        elif trend_short:
             score = (
                 #bear_pattern * 0.5
                 #bear_ind["sr_confluence"] * 2

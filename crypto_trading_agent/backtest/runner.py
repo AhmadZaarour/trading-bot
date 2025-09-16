@@ -31,7 +31,7 @@ class Backtester:
             print("No data for backtest.")
         df = add_indicators(df)
 
-        for i in range(len(df)):  # skip warmup
+        for i in range(len(df)):
             if open_trade:
                 # manage trade exits
                 open_trade["bars_open"] += 1
@@ -49,7 +49,7 @@ class Backtester:
                         self._close_trade(open_trade, exit_price, df, i)
                         open_trade = None
 
-            else:
+            elif not open_trade:
                 # look for new trade
                 signal = self.strategy.test_evaluate(df)
                 if signal["signal"] in ("long", "short"):

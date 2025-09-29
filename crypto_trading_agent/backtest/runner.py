@@ -9,29 +9,34 @@ with open("config/default.yaml", "r") as file:
     config = yaml.safe_load(file)
 
 class Backtester:
-    def __init__(self, strategy, data, initial_balance=1000, leverage=5, risk_per_trade=0.02, max_bars=20):
+    def __init__(self, risk, broker, strategy, data, initial_balance=1000):
+        self.risk = risk
+        self.broker = broker
         self.strategy = strategy
         self.data = data
         self.initial_balance = initial_balance
-        self.leverage = leverage
-        self.risk_per_trade = risk_per_trade
-        self.max_bars = max_bars
+        self.leverage = config["RISK"]["MAX_LEVERAGE"]
+        self.risk_per_trade = config["RISK"]["RISK_PER_TRADE"]
+        self.max_bars = config["RISK"]["MAX_BARS_PER_TRADE"]
         self.symbol = config["SYMBOL"]
         self.interval = config["INTERVAL"]
-        self.lookback = 1000
+        self.limit = 1000
+        self.lookback = config["LOOKBACK"]
         self.balance = initial_balance
         self.equity_curve = []
         self.trades = []
 
     def simulate(self):
         open_trade = None
-
-        df = self.data.latest_df(self.symbol, self.interval, self.lookback)
+        df = self.data.latest_df(self.symbol, self.interval, self.limit)
         if df.empty:
             print("No data for backtest.")
+            return self.trades, self.equity_curve
         df = add_indicators(df)
+        print(f"Data loaded: {len(df)} rows.")
 
-        for i in range(len(df)):
+        i = self.lookback
+        while i < len(df):
             if open_trade:
                 # manage trade exits
                 open_trade["bars_open"] += 1
@@ -49,11 +54,11 @@ class Backtester:
                         self._close_trade(open_trade, exit_price, df, i)
                         open_trade = None
 
-            elif not open_trade:
-                # look for new trade
-                signal = self.strategy.test_evaluate(df)
+                i += 1  # Move to next bar after managing trade
+            else:
+                signal = self.strategy.test_evaluate(df, i)
                 if signal["signal"] in ("long", "short"):
-                    qty = self._position_size(signal["entry"], signal["sl"])
+                    qty = self.risk.safe_position_size(signal["entry"], signal["sl"], self.balance, self.broker.get_filters(self.symbol), self.leverage, self.risk_per_trade)
                     if qty > 0:
                         open_trade = {
                             "side": signal["signal"],
@@ -64,6 +69,7 @@ class Backtester:
                             "qty": qty,
                             "entry_time": df.index[i],
                         }
+                i += 1  # Move to next bar after signal evaluation
 
         return self.trades, self.equity_curve
     
@@ -146,14 +152,6 @@ class Backtester:
         plt.show()
 
         return df
-
-    def _position_size(self, entry, sl):
-        sl_pct = abs(entry - sl) / entry
-        if sl_pct <= 0:
-            return 0
-        risk_amount = self.balance * self.risk_per_trade
-        qty = min(risk_amount / sl_pct, (self.balance * self.leverage) / entry)
-        return qty
 
     def _close_trade(self, trade, exit_price, df, i):
 

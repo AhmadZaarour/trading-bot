@@ -9,12 +9,14 @@ class DataProvider:
 
 class BinanceDataProvider(DataProvider):
     def __init__(self, testnet: bool = True):
-        api_key = os.getenv("BINANCE_API_KEY")
-        api_secret = os.getenv("BINANCE_API_SECRET")
 
         if testnet:
+            api_key = os.getenv("API_KEY_TESTNET")
+            api_secret = os.getenv("API_SECRET_TESTNET")
             self.client = Client(api_key, api_secret, testnet=True)
         else:
+            api_key = os.getenv("API_KEY")
+            api_secret = os.getenv("API_SECRET")
             self.client = Client(api_key, api_secret)
 
     def latest_df(self, symbol: str, interval: str, limit: int) -> pd.DataFrame:

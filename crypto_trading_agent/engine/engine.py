@@ -34,6 +34,7 @@ class Engine:
                     time.sleep(self.poll_seconds)
                     continue
                 df = add_indicators(df)
+                print(f"Data loaded: {len(df)} rows.")
 
                 latest_close_time = df.index[-1]
                 if self.last_seen_close is not None and latest_close_time == self.last_seen_close:
@@ -66,10 +67,11 @@ class Engine:
                 # if no open trade, evaluate strategy
                 if abs(current_position["amt"]) < 1e-12 and not self.open_trade:
 
-                    trade = self.strategy.test_evaluate(df)
+                    trade = self.strategy.evaluate(df)
                     if trade["signal"] in ["long", "short"]:
 
                         balance = self.broker.get_balance()
+                        self.risk.ensure_leverage(self.symbol, self.max_leverage)
                         sl = self.broker.round_tick(trade["sl"], self.broker.get_filters(self.symbol)["tickSize"])
                         tp = self.broker.round_tick(trade["tp"], self.broker.get_filters(self.symbol)["tickSize"])
                         entry_price = trade["entry"]

@@ -1,3 +1,4 @@
+from http import client
 import os
 from binance.client import Client
 from typing import Dict, Any
@@ -39,11 +40,12 @@ class BinanceFuturesBroker(Broker):
     def __init__(self, testnet: bool = True):
         
         load_dotenv()
-        api_key = os.getenv("API_KEY_testnet")
-        api_secret = os.getenv("API_SECRET_testnet")
+        api_key = os.getenv("API_KEY_TESTNET")
+        api_secret = os.getenv("API_SECRET_TESTNET")
 
         if testnet:
             self.client = Client(api_key, api_secret, testnet=True)
+
         else:
             self.client = Client(api_key, api_secret)
 

@@ -8,6 +8,7 @@ class RiskManager():
 
         try:
             self.broker.futures_change_leverage(symbol=symbol, leverage=leverage)
+            print(f"Leverage set to {leverage}x for {symbol}.")
 
         except Exception as e:
             print("Leverage change warning:", e)
@@ -30,7 +31,7 @@ class RiskManager():
 
         # Leverage cap (with safety buffer for fees/slippage)
         max_qty_leverage = (balance * leverage * safety) / entry_price
-        qty = (min(qty_risk, max_qty_leverage)) * 0.02
+        qty = (min(qty_risk, max_qty_leverage))
 
         # Round to step and enforce exchange minimums
         qty = self.broker.round_step(qty, step)

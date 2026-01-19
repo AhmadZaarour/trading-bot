@@ -40,35 +40,44 @@ class Backtester:
             if open_trade:
                 # manage trade exits
                 open_trade["bars_open"] += 1
-                price = df["close"].iloc[i]
-
-                if open_trade["side"] == "long":
-                    if price <= open_trade["sl"] or price >= open_trade["tp"] or open_trade["bars_open"] >= self.max_bars:
-                        exit_price = price
-                        self._close_trade(open_trade, exit_price, df, i)
-                        open_trade = None
-
-                elif open_trade["side"] == "short":
-                    if price >= open_trade["sl"] or price <= open_trade["tp"] or open_trade["bars_open"] >= self.max_bars:
-                        exit_price = price
-                        self._close_trade(open_trade, exit_price, df, i)
-                        open_trade = None
+                row = df.iloc[i]
+                exit_price = self._resolve_exit_price(open_trade, row)
+                if exit_price is not None:
+                    self._close_trade(open_trade, exit_price, df, i)
+                    open_trade = None
 
                 i += 1  # Move to next bar after managing trade
             else:
                 signal = self.strategy.test_evaluate(df, i)
-                if signal["signal"] in ("long", "short"):
-                    qty = self.risk.safe_position_size(signal["entry"], signal["sl"], self.balance, self.broker.get_filters(self.symbol), self.leverage, self.risk_per_trade)
-                    if qty > 0:
-                        open_trade = {
-                            "side": signal["signal"],
-                            "entry": signal["entry"],
-                            "sl": signal["sl"],
-                            "tp": signal["tp"],
-                            "bars_open": 0,
-                            "qty": qty,
-                            "entry_time": df.index[i],
-                        }
+                if not signal or signal.get("signal") not in ("long", "short"):
+                    i += 1
+                    continue
+
+                entry = signal.get("entry")
+                sl = signal.get("sl")
+                tp = signal.get("tp")
+                if entry is None or sl is None or tp is None:
+                    i += 1
+                    continue
+
+                entry = float(entry)
+                sl = float(sl)
+                tp = float(tp)
+                if not self._valid_trade_levels(signal["signal"], entry, sl, tp):
+                    i += 1
+                    continue
+
+                qty = self.risk.safe_position_size(entry, sl, self.balance, self.broker.get_filters(self.symbol), self.leverage, self.risk_per_trade)
+                if qty > 0:
+                    open_trade = {
+                        "side": signal["signal"],
+                        "entry": entry,
+                        "sl": sl,
+                        "tp": tp,
+                        "bars_open": 0,
+                        "qty": qty,
+                        "entry_time": df.index[i],
+                    }
                 i += 1  # Move to next bar after signal evaluation
 
         return self.trades, self.equity_curve
@@ -166,3 +175,33 @@ class Backtester:
         trade["pnl"] = pnl
         self.trades.append(trade)
         self.equity_curve.append(self.balance)
+
+    def _valid_trade_levels(self, side: str, entry: float, sl: float, tp: float) -> bool:
+        if side == "long":
+            return sl < entry < tp
+        return tp < entry < sl
+
+    def _resolve_exit_price(self, trade, row):
+        if trade["bars_open"] >= self.max_bars:
+            return float(row["close"])
+
+        low = float(row["low"])
+        high = float(row["high"])
+        sl = trade["sl"]
+        tp = trade["tp"]
+
+        if trade["side"] == "long":
+            if low <= sl and high >= tp:
+                return sl
+            if low <= sl:
+                return sl
+            if high >= tp:
+                return tp
+        else:
+            if high >= sl and low <= tp:
+                return sl
+            if high >= sl:
+                return sl
+            if low <= tp:
+                return tp
+        return None

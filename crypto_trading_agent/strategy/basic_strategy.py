@@ -196,7 +196,7 @@ class MyStrategy(Strategy):
                 + bull_ind["rsi_divergence"] * 0.5
                 + atr_ok * 0.5
             )
-            if score >= 0.5:
+            if score >= 0.3:
                 
                 trade = {
                     "signal": "long",
@@ -235,7 +235,7 @@ class MyStrategy(Strategy):
                 + bear_ind["rsi_divergence"] * 0.5
                 + atr_ok * 0.5
             )
-            if score >= 0.5:
+            if score >= 0.3:
                 trade = {
                     "signal": "short",
                     "entry": entry,

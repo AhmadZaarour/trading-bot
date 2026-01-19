@@ -15,9 +15,9 @@ def main():
     engine = Engine(data, broker, risk, strategy)
     backtest = Backtester(risk, broker, strategy, data)
 
-    choice = input("1 for live trade, 2 for simulation:")
+    choice = input("1 for live trade, 2 for simulation: ")
     while choice not in ['1', '2']:
-        choice = input("Invalid choice. Please enter 1 for live trade, 2 for simulation:")
+        choice = input("Invalid choice. Please enter 1 for live trade, 2 for simulation: ")
     
     if choice == '2':
         backtest.run()

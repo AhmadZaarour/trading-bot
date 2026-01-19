@@ -4,34 +4,9 @@ from binance.client import Client
 from typing import Dict, Any
 import numpy as np
 from dotenv import load_dotenv
+from .broker_base import Broker
 
-class Broker:
-    def get_filters(self, symbol: str) -> Dict[str, Any]:
-        raise NotImplementedError
-
-    def get_balance(self) -> float:
-        raise NotImplementedError
-
-    def get_position(self, symbol: str) -> Dict[str, Any]:
-        raise NotImplementedError
-
-    def market_order(self, symbol: str, side: str, qty: float) -> Dict[str, Any]:
-        raise NotImplementedError
-
-    def place_exit_orders(self, symbol: str, side: str, qty: float, sl: float, tp: float) -> None:
-        raise NotImplementedError
-
-    def close_all_positions(self, symbol: str) -> None:
-        raise NotImplementedError
     
-    def round_step(self, qty: float, step: float) -> float:
-        raise NotImplementedError
-
-    def round_tick(self, price: float, tick: float) -> float:
-        raise NotImplementedError
-    
-
-
 class BinanceFuturesBroker(Broker):
     """
     Binance Futures Testnet broker adapter.
@@ -40,14 +15,11 @@ class BinanceFuturesBroker(Broker):
     def __init__(self, testnet: bool = True):
         
         load_dotenv()
-        api_key = os.getenv("API_KEY_TESTNET")
-        api_secret = os.getenv("API_SECRET_TESTNET")
-
         if testnet:
-            self.client = Client(api_key, api_secret, testnet=True)
+            self.client = Client(os.getenv("API_KEY_TESTNET"), os.getenv("API_SECRET_TESTNET"), testnet=True)
 
         else:
-            self.client = Client(api_key, api_secret)
+            self.client = Client(os.getenv("API_KEY"), os.getenv("API_SECRET"))
 
     def get_filters(self, symbol: str) -> Dict[str, Any]:
         info = self.client.futures_exchange_info()

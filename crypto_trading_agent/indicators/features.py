@@ -7,6 +7,7 @@ from .patterns_long import *
 def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     # EMA
+    df["ema_20"] = ta.trend.EMAIndicator(df["close"], window=20).ema_indicator()
     df["ema_50"] = ta.trend.EMAIndicator(df["close"], window=50).ema_indicator()
     df["ema_200"] = ta.trend.EMAIndicator(df["close"], window=200).ema_indicator()
     # RSI
@@ -21,6 +22,19 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
         high=df["high"], low=df["low"], close=df["close"], window=14
     )
     df["atr"] = atr.average_true_range()
+    # ADX
+    adx = ta.trend.ADXIndicator(
+        high=df["high"], low=df["low"], close=df["close"], window=14
+    )
+    df["adx"] = adx.adx()
+    # Bollinger Bands
+    bb = ta.volatility.BollingerBands(df["close"], window=20, window_dev=2)
+    df["bb_high"] = bb.bollinger_hband()
+    df["bb_mid"] = bb.bollinger_mavg()
+    df["bb_low"] = bb.bollinger_lband()
+    df["bb_width"] = (df["bb_high"] - df["bb_low"]) / df["bb_mid"]
+    # Volume
+    df["volume_sma_20"] = df["volume"].rolling(20).mean()
 
     df.dropna(inplace=True)
     return df

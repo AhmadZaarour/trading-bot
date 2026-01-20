@@ -1,5 +1,5 @@
 mode: live   # live | paper | backtest
-SYMBOL: SOLUSDT
+SYMBOL: XRPUSDT
 LOOKBACK: 250
 POLL_SECONDS: 30
 INTERVAL: 1h

@@ -79,27 +79,29 @@ class MyStrategy(Strategy):
             curr["ema_20"] > curr["ema_50"] > curr["ema_200"]
             and curr["close"] > curr["ema_20"]
             and curr["macd_line"] > curr["macd_signal"]
-            and 50 <= curr["rsi"] <= 70
+            and 70 <= curr["rsi"]
             and curr["volume"] > volume_ma
         )
         trend_short = (
             curr["ema_20"] < curr["ema_50"] < curr["ema_200"]
             and curr["close"] < curr["ema_20"]
             and curr["macd_line"] < curr["macd_signal"]
-            and 30 <= curr["rsi"] <= 50
+            and curr["rsi"] <= 30
             and curr["volume"] > volume_ma
         )
 
         # === Range setups ===
         range_long = (
-            curr["rsi"] <= 35
+            curr["rsi"] <= 30
             and curr["close"] <= curr["bb_low"] * 1.01
             and curr["macd_line"] > curr["macd_signal"]
+            and curr["ema_20"] < curr["close"]
         )
         range_short = (
-            curr["rsi"] >= 65
+            curr["rsi"] >= 70
             and curr["close"] >= curr["bb_high"] * 0.99
             and curr["macd_line"] < curr["macd_signal"]
+            and curr["ema_20"] > curr["close"]
         )
 
         # === Scoring ===

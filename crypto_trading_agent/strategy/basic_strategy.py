@@ -79,7 +79,7 @@ class MyStrategy(Strategy):
             curr["ema_20"] > curr["ema_50"] > curr["ema_200"]
             and curr["close"] > curr["ema_20"]
             and curr["macd_line"] > curr["macd_signal"]
-            and 70 <= curr["rsi"]
+            and 60 <= curr["rsi"]
             and curr["volume"] > volume_ma
         )
         trend_short = (
@@ -98,7 +98,7 @@ class MyStrategy(Strategy):
             and curr["ema_20"] < curr["close"]
         )
         range_short = (
-            curr["rsi"] >= 70
+            curr["rsi"] >= 60
             and curr["close"] >= curr["bb_high"] * 0.99
             and curr["macd_line"] < curr["macd_signal"]
             and curr["ema_20"] > curr["close"]
@@ -122,7 +122,7 @@ class MyStrategy(Strategy):
 
         if regime == "trend" and trend_long and rr_long >= min_rr:
             score = score_setup(bull_pattern, bull_ind, bull_sr, True)
-            if score >= 0.6:
+            if score >= 0.7:
                 return {
                     "signal": "long",
                     "entry": entry,
@@ -138,7 +138,7 @@ class MyStrategy(Strategy):
 
         if regime == "trend" and trend_short and rr_short >= min_rr:
             score = score_setup(bear_pattern, bear_ind, bear_sr, False)
-            if score >= 0.6:
+            if score >= 0.7:
                 return {
                     "signal": "short",
                     "entry": entry,
@@ -154,7 +154,7 @@ class MyStrategy(Strategy):
 
         if regime == "range" and range_long and rr_long >= min_rr:
             score = score_setup(bull_pattern, bull_ind, bull_sr, True)
-            if score >= 0.5:
+            if score >= 0.7:
                 return {
                     "signal": "long",
                     "entry": entry,
@@ -170,7 +170,7 @@ class MyStrategy(Strategy):
 
         if regime == "range" and range_short and rr_short >= min_rr:
             score = score_setup(bear_pattern, bear_ind, bear_sr, False)
-            if score >= 0.5:
+            if score >= 0.7:
                 return {
                     "signal": "short",
                     "entry": entry,

@@ -5,12 +5,8 @@ from datetime import datetime, timezone
 from indicators.features import add_indicators
 import yaml
 
-# Open and load the YAML file
-with open("config/default.yaml", "r") as file:
-    config = yaml.safe_load(file)  # safe_load prevents running arbitrary code
-
 class Engine:
-    def __init__(self, data, broker, risk, strategy):
+    def __init__(self, data, broker, risk, strategy, config):
         self.data = data
         self.broker = broker
         self.risk = risk
@@ -113,3 +109,9 @@ class Engine:
             except Exception as e:
                 print("Engine error:", e)
                 time.sleep(self.poll_seconds)
+                
+    def stop(self):
+        print("stopping engine...")
+        self.broker.close_all_positions(self.symbol)
+        self.open_trade = None
+        print("Engine stopped")

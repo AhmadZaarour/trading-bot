@@ -4,12 +4,8 @@ import matplotlib.pyplot as plt
 from indicators.features import add_indicators
 import yaml
 
-# Open and load the YAML file
-with open("config/default.yaml", "r") as file:
-    config = yaml.safe_load(file)
-
 class Backtester:
-    def __init__(self, risk, broker, strategy, data, initial_balance=1000):
+    def __init__(self, risk, broker, strategy, data, config, initial_balance=1000):
         self.risk = risk
         self.broker = broker
         self.strategy = strategy

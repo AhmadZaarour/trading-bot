@@ -4,6 +4,8 @@ from strategy.basic_strategy import MyStrategy
 from engine.engine import Engine
 from engine.risk import RiskManager
 from backtest.runner import Backtester
+from engine.engine_thrader import EngineThreader
+import yaml
 
 def main():
     broker = BinanceFuturesBroker(testnet=True)
@@ -11,9 +13,15 @@ def main():
     risk = RiskManager(broker)
     
     strategy = MyStrategy()
+    
+    # Open and load the YAML file
+    with open("config/default.yaml", "r") as file:
+        config = yaml.safe_load(file)
 
-    engine = Engine(data, broker, risk, strategy)
-    backtest = Backtester(risk, broker, strategy, data)
+
+    engine = Engine(data, broker, risk, strategy, config)
+    engine_threader = EngineThreader(config, data, broker, risk, strategy)
+    backtest = Backtester(risk, broker, strategy, data, config)
 
     choice = input("1 for live trade, 2 for simulation: ")
     while choice not in ['1', '2']:

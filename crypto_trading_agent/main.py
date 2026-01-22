@@ -2,6 +2,7 @@ from engine.broker import BinanceFuturesBroker
 from engine.data import BinanceDataProvider, SpotDataProvider
 from engine.spot_broker import SpotBroker
 from strategy.basic_strategy import MyStrategy
+from strategy.spot_strategy import SpotStrategy
 from engine.engine import Engine
 from engine.spot_engine import SpotEngine
 from engine.risk import RiskManager
@@ -12,7 +13,8 @@ import yaml
 
 
 def main():
-    strategy = MyStrategy()
+    futures_strategy = MyStrategy()
+    spot_strategy = SpotStrategy()
 
     with open("config/default.yaml", "r") as file:
         config = yaml.safe_load(file)
@@ -30,7 +32,7 @@ def main():
         futures_data,
         futures_broker,
         futures_risk,
-        strategy,
+        futures_strategy,
         symbol=symbol,
         interval=config["INTERVAL"],
         lookback=config["LOOKBACK"],
@@ -39,13 +41,19 @@ def main():
         max_bars_per_trade=config["RISK"]["MAX_BARS_PER_TRADE"],
         pol_seconds=config["POLL_SECONDS"],
     )
-    engine_threader = EngineThreader(config, futures_data, futures_broker, futures_risk, strategy)
-    backtest = Backtester(futures_risk, futures_broker, strategy, futures_data, config)
+    engine_threader = EngineThreader(
+        config,
+        futures_data,
+        futures_broker,
+        futures_risk,
+        futures_strategy,
+    )
+    backtest = Backtester(futures_risk, futures_broker, futures_strategy, futures_data, config)
 
     spot_engine = SpotEngine(
         spot_data,
         spot_broker,
-        strategy,
+        spot_strategy,
         symbol=symbol,
         interval=config["INTERVAL"],
         lookback=config["LOOKBACK"],
@@ -53,7 +61,7 @@ def main():
         max_bars_per_trade=config["RISK"]["MAX_BARS_PER_TRADE"],
         poll_seconds=config["POLL_SECONDS"],
     )
-    spot_backtest = SpotBacktester(spot_broker, strategy, spot_data, config)
+    spot_backtest = SpotBacktester(spot_broker, spot_strategy, spot_data, config)
 
     choice = input("1 for futures live, 2 for futures backtest, 3 for spot live, 4 for spot backtest: ")
     while choice not in ["1", "2", "3", "4"]:

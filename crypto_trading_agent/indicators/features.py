@@ -59,30 +59,24 @@ def dynamic_tp_sl(
     # Long
     sl_long = sl_long_raw
     if nearest_sup_below and (entry - nearest_sup_below) <= tolerance_atr_mult * atr:
-        sl_long = nearest_sup_below * 0.99
+        sl_long = nearest_sup_below
     tp_long = tp_long_raw
     if nearest_res_above and (nearest_res_above - entry) <= tolerance_atr_mult * atr:
-        tp_long = nearest_res_above * 1.02
+        tp_long = nearest_res_above
 
     # Short
     sl_short = sl_short_raw
     if nearest_res_above and (nearest_res_above - entry) <= tolerance_atr_mult * atr:
-        sl_short = nearest_res_above * 1.01
+        sl_short = nearest_res_above
     tp_short = tp_short_raw
     if nearest_sup_below and (entry - nearest_sup_below) <= tolerance_atr_mult * atr:
-        tp_short = nearest_sup_below * 0.98
+        tp_short = nearest_sup_below
 
     return float(tp_long), float(sl_long), float(tp_short), float(sl_short)
 
-# ==== Utility ====
-def has_resistance(r_level):
-    if r_level:
-        return True
-    return False
-
 # ==== Core Logic ====
 def get_bearish_indicators(df, i, prev2, prev1, curr, volume_ma):
-    r_levels = get_resistance_levels(df, i)
+    r_levels = get_resistance_levels(df, i, curr)
 
     # Candle patterns
     has_bearish_pattern = any([
@@ -106,7 +100,6 @@ def get_bearish_indicators(df, i, prev2, prev1, curr, volume_ma):
         "volume_confirmation": curr["volume"] > volume_ma,
         "rsi_divergence": is_rsi_bearish_divergence(df, i),
         "fib_bounce": is_fib_bounce_bearish(df, i),
-        "sr_confluence": has_resistance(r_levels),
         "triangle_confluence": is_bearish_triangle_pattern(df, i),
         "flag_pattern": is_bearish_flag_pattern(df, i),
         "double_top": is_double_top(df, i),
@@ -116,13 +109,8 @@ def get_bearish_indicators(df, i, prev2, prev1, curr, volume_ma):
 
     return has_bearish_pattern, indicators, r_levels
 
-def has_support(s_level):
-    if s_level:
-        return True
-    return False
-
 def get_bullish_indicators(df, i, prev2, prev1, curr, volume_ma):
-    s_levels = get_support_levels(df, i)
+    s_levels = get_support_levels(df, i, curr)
 
     # Candle patterns
     has_bullish_pattern = any([
@@ -145,7 +133,6 @@ def get_bullish_indicators(df, i, prev2, prev1, curr, volume_ma):
         "volume_confirmation": curr["volume"] > volume_ma,
         "rsi_divergence": is_rsi_bullish_divergence(df, i),
         "fib_bounce": is_fib_bounce(df, i),
-        "sr_confluence": has_support(s_levels),
         "triangle_confluence": is_triangle_pattern(df, i),
         "flag_pattern": is_flag_pattern(df, i),
         "double_bottom": is_double_bottom(df, i),
@@ -162,3 +149,85 @@ def rr_for(direction, entry, tp, sl):
     if direction == "short" and sl and tp and tp < entry < sl:
         return (entry - tp) / (sl - entry)
     return 0.0
+
+from typing import List, Tuple, Optional
+import numpy as np
+import pandas as pd
+
+def _cluster_levels(values: np.ndarray, tol_pct: float, min_touches: int) -> List[Tuple[float, int]]:
+    """
+    Sort + cluster consecutive values that are within tol_pct of the running cluster mean.
+    Returns [(cluster_mean, touches), ...] sorted by cluster_mean.
+    """
+    if len(values) == 0:
+        return []
+
+    vals = np.sort(values.astype(float))
+    clusters: List[Tuple[float, int]] = []
+
+    cur = [vals[0]]
+    cur_mean = vals[0]
+
+    for v in vals[1:]:
+        # Compare to current cluster mean (more stable than comparing to v itself)
+        if abs(v - cur_mean) / max(cur_mean, 1e-12) <= tol_pct:
+            cur.append(v)
+            cur_mean = float(np.mean(cur))
+        else:
+            if len(cur) >= min_touches:
+                clusters.append((float(np.mean(cur)), len(cur)))
+            cur = [v]
+            cur_mean = v
+
+    if len(cur) >= min_touches:
+        clusters.append((float(np.mean(cur)), len(cur)))
+
+    return clusters
+
+def get_support_levels(
+    df: pd.DataFrame,
+    i: int,
+    curr,
+    lookback: int = 200,
+    min_touches: int = 4,
+    top_n: int = 1,
+) -> List[float]:
+    if i < lookback:
+        return []
+
+    lows = df["low"].iloc[i - lookback : i].to_numpy()
+    ref_price = float(df["close"].iloc[i - 1])
+    atr_pct = curr["atr"] / curr["close"]  # e.g. 0.008 = 0.8%
+    tolerance = min(0.015, max(0.004, 2.0 * atr_pct))
+    # clamp to 0.4% .. 1.5%, centered around 2*ATR%
+
+
+    clusters = _cluster_levels(lows, tolerance, min_touches)
+    # supports = clusters below price, pick closest below (highest level)
+    supports = [(lvl, touches) for (lvl, touches) in clusters if lvl < ref_price]
+    supports.sort(key=lambda x: x[0], reverse=True)  # closest below first
+
+    return [lvl for (lvl, _) in supports[:top_n]]
+
+def get_resistance_levels(
+    df: pd.DataFrame,
+    i: int,
+    curr,
+    lookback: int = 200,
+    min_touches: int = 4,
+    top_n: int = 1,
+) -> List[float]:
+    if i < lookback:
+        return []
+
+    highs = df["high"].iloc[i - lookback : i].to_numpy()
+    ref_price = float(df["close"].iloc[i - 1])
+    atr_pct = curr["atr"] / curr["close"]  # e.g. 0.008 = 0.8%
+    tolerance = min(0.015, max(0.004, 2.0 * atr_pct))
+
+    clusters = _cluster_levels(highs, tolerance, min_touches)
+    # resistances = clusters above price, pick closest above (lowest level)
+    resistances = [(lvl, touches) for (lvl, touches) in clusters if lvl > ref_price]
+    resistances.sort(key=lambda x: x[0])  # closest above first
+
+    return [lvl for (lvl, _) in resistances[:top_n]]

@@ -3,8 +3,6 @@ from indicators.features import (
     rr_for,
     get_bearish_indicators,
     get_bullish_indicators,
-    has_resistance,
-    has_support,
     dynamic_tp_sl,
 )
 
@@ -105,23 +103,18 @@ class MyStrategy(Strategy):
         )
 
         # === Scoring ===
-        def score_setup(has_pattern, indicators, sr_levels, is_long):
+        def score_setup(has_pattern, indicators):
             score = 0.0
             score += 0.3 if atr_ok else 0.0
             score += 0.2 if curr["volume"] > volume_ma else 0.0
             score += 0.2 if has_pattern else 0.0
             score += 0.2 if indicators["rsi_divergence"] else 0.0
-            score += 0.1 if indicators["sr_confluence"] else 0.0
             score += 0.1 if indicators["flag_pattern"] or indicators["triangle_confluence"] else 0.0
             score += 0.1 if indicators["fib_bounce"] else 0.0
-            if is_long:
-                score += 0.1 if has_support(sr_levels) else 0.0
-            else:
-                score += 0.1 if has_resistance(sr_levels) else 0.0
             return score
 
         if regime == "trend" and trend_long and rr_long >= min_rr:
-            score = score_setup(bull_pattern, bull_ind, bull_sr, True)
+            score = score_setup(bull_pattern, bull_ind)
             if score >= 0.7:
                 return {
                     "signal": "long",
@@ -137,7 +130,7 @@ class MyStrategy(Strategy):
                 }
 
         if regime == "trend" and trend_short and rr_short >= min_rr:
-            score = score_setup(bear_pattern, bear_ind, bear_sr, False)
+            score = score_setup(bear_pattern, bear_ind)
             if score >= 0.7:
                 return {
                     "signal": "short",
@@ -153,7 +146,7 @@ class MyStrategy(Strategy):
                 }
 
         if regime == "range" and range_long and rr_long >= min_rr:
-            score = score_setup(bull_pattern, bull_ind, bull_sr, True)
+            score = score_setup(bull_pattern, bull_ind)
             if score >= 0.7:
                 return {
                     "signal": "long",
@@ -169,7 +162,7 @@ class MyStrategy(Strategy):
                 }
 
         if regime == "range" and range_short and rr_short >= min_rr:
-            score = score_setup(bear_pattern, bear_ind, bear_sr, False)
+            score = score_setup(bear_pattern, bear_ind)
             if score >= 0.7:
                 return {
                     "signal": "short",

@@ -6,18 +6,18 @@ from indicators.features import add_indicators
 import yaml
 
 class Engine:
-    def __init__(self, data, broker, risk, strategy, config):
+    def __init__(self, data, broker, risk, strategy, symbol, interval, lookback, max_leverage, risk_per_trade, max_bars_per_trade, pol_seconds):
         self.data = data
         self.broker = broker
         self.risk = risk
         self.strategy = strategy
-        self.symbol = config["SYMBOL"]
-        self.interval = config["INTERVAL"]
-        self.lookback = config["LOOKBACK"]
-        self.max_leverage = config["RISK"]["MAX_LEVERAGE"]
-        self.risk_per_trade = config["RISK"]["RISK_PER_TRADE"]
-        self.max_bars_per_trade = config["RISK"]["MAX_BARS_PER_TRADE"]
-        self.poll_seconds = config["POLL_SECONDS"]
+        self.symbol = symbol
+        self.interval = interval
+        self.lookback = lookback
+        self.max_leverage = max_leverage
+        self.risk_per_trade = risk_per_trade
+        self.max_bars_per_trade = max_bars_per_trade
+        self.poll_seconds = pol_seconds
         self.last_seen_close: Optional[pd.Timestamp] = None
         self.open_trade: Optional[dict] = None
 
@@ -112,6 +112,11 @@ class Engine:
                 
     def stop(self):
         print("stopping engine...")
-        self.broker.close_all_positions(self.symbol)
-        self.open_trade = None
+        current_position = self.broker.get_position(self.symbol)
+        if abs(current_position["amt"]) >= 1e-12:
+            try:
+                self.broker.close_all_positions(self.symbol)
+            except Exception as e:
+                print("Error closing positions:", e)
+            self.open_trade = None
         print("Engine stopped")

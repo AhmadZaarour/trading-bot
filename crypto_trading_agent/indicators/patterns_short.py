@@ -266,23 +266,3 @@ def is_falling_triangle(df, i, window=10):
     lows_descending = all(lows[j] > lows[j + 1] for j in range(len(lows) - 1))
 
     return highs_flat_or_descending and lows_descending
-
-import numpy as np
-import pandas as pd
-from typing import List
-
-def get_resistance_levels(df: pd.DataFrame, i: int, lookback=10, min_touches=3, tolerance=0.01) -> List[float]:
-    """Cluster highs in the last `lookback` bars; return strongest resistance."""
-    if i < lookback:
-        return []
-    highs = df["high"].iloc[i - lookback : i].values
-    candidates = []
-    for hv in highs:
-        cluster = [x for x in highs if abs(x - hv) / hv <= tolerance]
-        if len(cluster) >= min_touches:
-            candidates.append(float(np.mean(cluster)))
-    if candidates:
-        med = float(np.median(candidates))
-        best = min(candidates, key=lambda x: abs(x - med))
-        return [best]
-    return []

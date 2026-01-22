@@ -19,7 +19,15 @@ def main():
         config = yaml.safe_load(file)
 
 
-    engine = Engine(data, broker, risk, strategy, config)
+    engine = Engine(data, broker, risk, strategy, 
+                    symbol=config["SYMBOL"][0],
+                    interval=config["INTERVAL"],
+                    lookback=config["LOOKBACK"],
+                    max_leverage=config["RISK"]["MAX_LEVERAGE"],
+                    risk_per_trade=config["RISK"]["RISK_PER_TRADE"],
+                    max_bars_per_trade=config["RISK"]["MAX_BARS_PER_TRADE"],
+                    pol_seconds=config["POLL_SECONDS"]
+                   )
     engine_threader = EngineThreader(config, data, broker, risk, strategy)
     backtest = Backtester(risk, broker, strategy, data, config)
 

@@ -1,18 +1,18 @@
 import threading
 import time
-from typing import dict, List
+from typing import Dict, List
 from datetime import datetime
 from engine.engine import Engine
 
 class EngineThreader(threading.Thread):
     def __init__(self, config, data, broker, risk, strategy):
         super().__init__()
-        self.symbols = config["SYMBOLS"]
+        self.symbols = config["SYMBOL"]
         self.data = data
         self.broker = broker
         self.risk = risk
         self.strategy = strategy
-        self.engines: dict[str, Engine] = {}
+        self.engines: Dict[str, Engine] = {}
         self.stop_event = threading.Event()
 
     def run(self):

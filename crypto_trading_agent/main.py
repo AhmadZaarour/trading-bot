@@ -26,7 +26,7 @@ def main():
     futures_risk = RiskManager(futures_broker)
 
     spot_broker = SpotBroker(testnet=True)
-    spot_data = SpotDataProvider(testnet=True)
+    spot_data = SpotDataProvider(testnet=False)
 
     futures_engine = Engine(
         futures_data,

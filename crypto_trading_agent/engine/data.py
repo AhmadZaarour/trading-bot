@@ -39,7 +39,7 @@ class BinanceDataProvider(DataProvider):
 
 
 class SpotDataProvider(DataProvider):
-    def __init__(self, testnet: bool = True):
+    def __init__(self, testnet: bool = False):
         if testnet:
             api_key = os.getenv("API_KEY_TEST")
             api_secret = os.getenv("API_SECRET_TEST")

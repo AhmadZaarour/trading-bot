@@ -20,14 +20,14 @@ class SpotBroker(Broker):
         load_dotenv()
         if testnet:
             self.client = Client(
-                os.getenv("SPOT_API_KEY_TESTNET"),
-                os.getenv("SPOT_API_SECRET_TESTNET"),
+                os.getenv("API_KEY_TEST"),
+                os.getenv("API_SECRET_TEST"),
                 testnet=True,
             )
         else:
             self.client = Client(
-                os.getenv("SPOT_API_KEY"),
-                os.getenv("SPOT_API_SECRET"),
+                os.getenv("API_KEY"),
+                os.getenv("API_SECRET"),
             )
 
         self._symbol_info_cache: Dict[str, Dict[str, Any]] = {}

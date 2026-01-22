@@ -16,7 +16,7 @@ class BinanceFuturesBroker(Broker):
         
         load_dotenv()
         if testnet:
-            self.client = Client(os.getenv("API_KEY_TESTNET"), os.getenv("API_SECRET_TESTNET"), testnet=True)
+            self.client = Client(os.getenv("API_KEY_TEST"), os.getenv("API_SECRET_TEST"), testnet=True)
 
         else:
             self.client = Client(os.getenv("API_KEY"), os.getenv("API_SECRET"))

@@ -65,8 +65,10 @@ def main():
         spot_engine.run()
     elif choice == "4":
         spot_backtest.run()
-    else:
+    elif choice == "1":
         futures_engine.run()
+    else:
+        print("Invalid choice.")
 
 
 if __name__ == "__main__":

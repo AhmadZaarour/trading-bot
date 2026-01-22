@@ -63,7 +63,7 @@ class Engine:
                 # if no open trade, evaluate strategy
                 if abs(current_position["amt"]) < 1e-12 and not self.open_trade:
 
-                    trade = self.strategy.evaluate(df)
+                    trade = self.strategy.test_live(df)
                     if trade["signal"] in ["long", "short"]:
 
                         balance = self.broker.get_balance()

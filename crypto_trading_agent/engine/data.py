@@ -11,8 +11,8 @@ class BinanceDataProvider(DataProvider):
     def __init__(self, testnet: bool = True):
 
         if testnet:
-            api_key = os.getenv("API_KEY_TESTNET")
-            api_secret = os.getenv("API_SECRET_TESTNET")
+            api_key = os.getenv("API_KEY_TEST")
+            api_secret = os.getenv("API_SECRET_TEST")
             self.client = Client(api_key, api_secret, testnet=True)
         else:
             api_key = os.getenv("API_KEY")
@@ -41,12 +41,12 @@ class BinanceDataProvider(DataProvider):
 class SpotDataProvider(DataProvider):
     def __init__(self, testnet: bool = True):
         if testnet:
-            api_key = os.getenv("SPOT_API_KEY_TESTNET")
-            api_secret = os.getenv("SPOT_API_SECRET_TESTNET")
+            api_key = os.getenv("API_KEY_TEST")
+            api_secret = os.getenv("API_SECRET_TEST")
             self.client = Client(api_key, api_secret, testnet=True)
         else:
-            api_key = os.getenv("SPOT_API_KEY")
-            api_secret = os.getenv("SPOT_API_SECRET")
+            api_key = os.getenv("API_KEY")
+            api_secret = os.getenv("API_SECRET")
             self.client = Client(api_key, api_secret)
 
     def latest_df(self, symbol: str, interval: str, limit: int) -> pd.DataFrame:

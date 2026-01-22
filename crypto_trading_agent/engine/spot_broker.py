@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from broker_base import Broker
+from .broker_base import Broker
 from dotenv import load_dotenv
 from binance.client import Client
 
@@ -38,9 +38,15 @@ class SpotBroker(Broker):
         bal = self.client.get_asset_balance(asset="USDT")
         return float(bal["free"]) if bal else 0.0
 
-    def get_asset_free(self, asset: str) -> float:
+    def get_asset_balance(self, asset: str) -> Tuple[float, float]:
         bal = self.client.get_asset_balance(asset=asset)
-        return float(bal["free"]) if bal else 0.0
+        if not bal:
+            return 0.0, 0.0
+        return float(bal["free"]), float(bal["locked"])
+
+    def get_asset_free(self, asset: str) -> float:
+        free, _ = self.get_asset_balance(asset)
+        return free
 
     def get_position(self, symbol: str) -> Dict[str, Any]:
         """
@@ -49,8 +55,9 @@ class SpotBroker(Broker):
         """
         info = self.get_symbol_info(symbol)
         base = info["baseAsset"]
-        free = self.get_asset_free(base)
-        return {"amt": free, "entryPrice": None}
+        free, locked = self.get_asset_balance(base)
+        total = free + locked
+        return {"amt": total, "entryPrice": None}
 
     # ---------- symbol info / filters ----------
 
@@ -114,6 +121,10 @@ class SpotBroker(Broker):
 
     # ---------- orders ----------
 
+    def get_last_price(self, symbol: str) -> Decimal:
+        ticker = self.client.get_symbol_ticker(symbol=symbol)
+        return Decimal(str(ticker["price"]))
+
     def market_buy_by_quote(self, symbol: str, quote_usdt: float) -> Dict[str, Any]:
         """
         Market BUY spending quote asset (USDT) via quoteOrderQty.
@@ -170,8 +181,10 @@ class SpotBroker(Broker):
         q = Decimal(str(qty_base))
         q_rounded, _ = self.round_qty_price(symbol, q)
 
-        self._ensure_min_rules_for_sell(symbol, q_rounded, price_for_notional=Decimal("1"))  # notional checked by exchange anyway
-        # (If you want strict minNotional check, pass a recent price instead of 1)
+        if q_rounded <= 0:
+            raise ValueError("Rounded quantity is zero.")
+        last_price = self.get_last_price(symbol)
+        self._ensure_min_rules_for_sell(symbol, q_rounded, price_for_notional=last_price)
 
         return self.client.create_order(
             symbol=symbol,
@@ -201,6 +214,8 @@ class SpotBroker(Broker):
         sp = Decimal(str(stop_price))
 
         qty, _ = self.round_qty_price(symbol, qty, None)
+        if qty <= 0:
+            raise ValueError("Rounded quantity is zero.")
         _, tp = self.round_qty_price(symbol, qty, tp)
         _, sp = self.round_qty_price(symbol, qty, sp)
 

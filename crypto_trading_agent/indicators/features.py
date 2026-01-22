@@ -39,6 +39,57 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df.dropna(inplace=True)
     return df
 
+def dynamic_tp_sl_long_oco(
+    entry: float,
+    r_levels: List[float],
+    s_levels: List[float],
+    atr: float,
+    atr_mult_sl: float = 1.0,
+    atr_mult_tp: float = 2.0,
+    tolerance_atr_mult: float = 2.0,
+    # “buffers” around levels to improve fill/trigger behavior
+    tp_buffer: float = 0.002,          # 0.1% below resistance
+    sl_buffer: float = 0.002,          # 0.1% below support
+    stop_limit_offset: float = 0.002,  # stopLimit below stopPrice by 0.1%
+) -> Tuple[float, float, float]:
+    if atr <= 0:
+        # fallback: just use small % if ATR unavailable
+        atr = entry * 0.002  # 0.2% fallback (tune this)
+
+    # raw ATR-based levels
+    sl_raw = entry - atr_mult_sl * atr
+    tp_raw = entry + atr_mult_tp * atr
+
+    # nearest SR
+    nearest_res_above: Optional[float] = min((r for r in (r_levels or []) if r > entry), default=None)
+    nearest_sup_below: Optional[float] = max((s for s in (s_levels or []) if s < entry), default=None)
+
+    # start with raw
+    sl = sl_raw
+    tp = tp_raw
+
+    # snap SL to support if close
+    if nearest_sup_below is not None and (entry - nearest_sup_below) <= tolerance_atr_mult * atr:
+        # slightly below support so it actually protects
+        sl = nearest_sup_below * (1.0 - sl_buffer)
+
+    # snap TP to resistance if close
+    if nearest_res_above is not None and (nearest_res_above - entry) <= tolerance_atr_mult * atr:
+        # slightly below resistance so it’s more likely to fill
+        tp = nearest_res_above * (1.0 - tp_buffer)
+
+    # sanity clamps for a long position
+    if tp <= entry:
+        tp = entry + atr_mult_tp * atr
+    if sl >= entry:
+        sl = entry - atr_mult_sl * atr
+
+    stop_price = sl
+    stop_limit_price = sl * (1.0 - stop_limit_offset)  # required for OCO sell
+
+    return float(tp), float(stop_price), float(stop_limit_price)
+
+
 def dynamic_tp_sl(
     entry: float,
     r_levels: List[float],

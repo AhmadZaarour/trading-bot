@@ -216,22 +216,25 @@ def _cluster_levels(values: np.ndarray, tol_pct: float, min_touches: int) -> Lis
     vals = np.sort(values.astype(float))
     clusters: List[Tuple[float, int]] = []
 
-    cur = [vals[0]]
-    cur_mean = vals[0]
+    cur_sum = float(vals[0])
+    cur_count = 1
+    cur_mean = cur_sum
 
     for v in vals[1:]:
         # Compare to current cluster mean (more stable than comparing to v itself)
         if abs(v - cur_mean) / max(cur_mean, 1e-12) <= tol_pct:
-            cur.append(v)
-            cur_mean = float(np.mean(cur))
+            cur_sum += float(v)
+            cur_count += 1
+            cur_mean = cur_sum / cur_count
         else:
-            if len(cur) >= min_touches:
-                clusters.append((float(np.mean(cur)), len(cur)))
-            cur = [v]
-            cur_mean = v
+            if cur_count >= min_touches:
+                clusters.append((cur_mean, cur_count))
+            cur_sum = float(v)
+            cur_count = 1
+            cur_mean = cur_sum
 
-    if len(cur) >= min_touches:
-        clusters.append((float(np.mean(cur)), len(cur)))
+    if cur_count >= min_touches:
+        clusters.append((cur_mean, cur_count))
 
     return clusters
 

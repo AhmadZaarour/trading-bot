@@ -23,9 +23,14 @@ class SpotBacktester:
         self.balance = self.initial_balance
         self.equity_curve = []
         self.trades = []
+        backtest_cfg = config.get("BACKTEST", {})
+        self.taker_fee = Decimal(str(backtest_cfg.get("TAKER_FEE", 0.0004)))
+        self.slippage_bps = Decimal(str(backtest_cfg.get("SLIPPAGE_BPS", 5)))
+        self.slippage_pct = self.slippage_bps / Decimal("10000")
 
     def simulate(self):
         open_trade = None
+        pending_signal = None
         df = self.data.latest_df(self.symbol, self.interval, self.limit)
         if df.empty:
             print("No data for spot backtest.")
@@ -36,6 +41,34 @@ class SpotBacktester:
 
         i = self.lookback
         while i < len(df):
+            if pending_signal:
+                entry_row = df.iloc[i]
+                entry_price = Decimal(str(entry_row["open"]))
+                sl = pending_signal["sl"]
+                tp = pending_signal["tp"]
+                if not self._valid_trade_levels(entry_price, sl, tp):
+                    pending_signal = None
+                    i += 1
+                    continue
+
+                qty = self._size_position(entry_price, sl)
+                if qty > 0:
+                    execution_price = self._apply_slippage(entry_price, is_entry=True)
+                    entry_fee = self._calc_fee(execution_price, qty)
+                    self.balance -= entry_fee
+                    open_trade = {
+                        "side": "long",
+                        "entry": float(execution_price),
+                        "sl": float(sl),
+                        "tp": float(tp),
+                        "bars_open": 0,
+                        "qty": float(qty),
+                        "entry_time": df.index[i],
+                        "entry_fee": float(entry_fee),
+                    }
+                    self.equity_curve.append(float(self.balance))
+                pending_signal = None
+
             if open_trade:
                 open_trade["bars_open"] += 1
                 row = df.iloc[i]
@@ -65,20 +98,12 @@ class SpotBacktester:
             if not self._valid_trade_levels(entry, sl, tp):
                 i += 1
                 continue
+            if i + 1 >= len(df):
+                break
 
-            qty = self._size_position(entry, sl)
-            if qty <= 0:
-                i += 1
-                continue
-
-            open_trade = {
-                "side": "long",
-                "entry": float(entry),
-                "sl": float(sl),
-                "tp": float(tp),
-                "bars_open": 0,
-                "qty": float(qty),
-                "entry_time": df.index[i],
+            pending_signal = {
+                "sl": sl,
+                "tp": tp,
             }
             i += 1
 
@@ -174,11 +199,16 @@ class SpotBacktester:
         return qty
 
     def _close_trade(self, trade, exit_price, df, i):
-        pnl = (exit_price - trade["entry"]) * trade["qty"]
-        self.balance += Decimal(str(pnl))
-        trade["exit_price"] = exit_price
+        execution_price = self._apply_slippage(Decimal(str(exit_price)), is_entry=False)
+        gross_pnl = (execution_price - Decimal(str(trade["entry"]))) * Decimal(str(trade["qty"]))
+        exit_fee = self._calc_fee(execution_price, Decimal(str(trade["qty"])))
+        pnl = gross_pnl - exit_fee
+        self.balance += pnl
+        trade["exit_price"] = float(execution_price)
         trade["exit_time"] = df.index[i]
-        trade["pnl"] = pnl
+        trade["gross_pnl"] = float(gross_pnl)
+        trade["exit_fee"] = float(exit_fee)
+        trade["pnl"] = float(pnl - Decimal(str(trade.get("entry_fee", 0.0))))
         self.trades.append(trade)
         self.equity_curve.append(float(self.balance))
 
@@ -201,3 +231,13 @@ class SpotBacktester:
         if high >= tp:
             return tp
         return None
+
+    def _apply_slippage(self, price: Decimal, is_entry: bool) -> Decimal:
+        if self.slippage_pct <= 0:
+            return price
+        return price * (Decimal("1") + self.slippage_pct) if is_entry else price * (Decimal("1") - self.slippage_pct)
+
+    def _calc_fee(self, price: Decimal, qty: Decimal) -> Decimal:
+        if self.taker_fee <= 0:
+            return Decimal("0")
+        return price * qty * self.taker_fee

@@ -93,7 +93,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Download spot candle data for the last 3 years.")
     parser.add_argument("--symbol", default="BTCUSDT", help="Trading pair symbol, e.g. BTCUSDT.")
     parser.add_argument("--interval", default="1h", help="Kline interval, e.g. 1h.")
-    parser.add_argument("--output", default="spot_3y.csv", help="Output CSV filename.")
+    parser.add_argument("--output", default="crypto_trading_agent/past_data/spot_3y.csv", help="Output CSV filename.")
     parser.add_argument("--limit", type=int, default=1000, help="Max klines per request (<=1000).")
     parser.add_argument("--sleep", type=float, default=0.6, help="Sleep seconds to respect rate limits.")
     parser.add_argument("--testnet", action="store_true", help="Use Binance testnet credentials.")
@@ -105,7 +105,7 @@ def main() -> None:
     client = build_client(args.testnet)
     df = collect_last_three_years(
         client=client,
-        symbol=args.symbol,
+        symbol="XRPUSDT",
         interval=args.interval,
         limit=args.limit,
         sleep_s=args.sleep,

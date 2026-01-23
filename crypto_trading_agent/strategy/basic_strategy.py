@@ -115,7 +115,7 @@ class MyStrategy(Strategy):
 
         if regime == "trend" and trend_long and rr_long >= min_rr:
             score = score_setup(bull_pattern, bull_ind)
-            if score >= 0.7:
+            if score >= 0.5:
                 return {
                     "signal": "long",
                     "entry": entry,
@@ -131,7 +131,7 @@ class MyStrategy(Strategy):
 
         if regime == "trend" and trend_short and rr_short >= min_rr:
             score = score_setup(bear_pattern, bear_ind)
-            if score >= 0.7:
+            if score >= 0.5:
                 return {
                     "signal": "short",
                     "entry": entry,
@@ -147,7 +147,7 @@ class MyStrategy(Strategy):
 
         if regime == "range" and range_long and rr_long >= min_rr:
             score = score_setup(bull_pattern, bull_ind)
-            if score >= 0.7:
+            if score >= 0.4:
                 return {
                     "signal": "long",
                     "entry": entry,
@@ -163,7 +163,7 @@ class MyStrategy(Strategy):
 
         if regime == "range" and range_short and rr_short >= min_rr:
             score = score_setup(bear_pattern, bear_ind)
-            if score >= 0.7:
+            if score >= 0.4:
                 return {
                     "signal": "short",
                     "entry": entry,

@@ -20,8 +20,8 @@ class SpotBroker(Broker):
         load_dotenv()
         if testnet:
             self.client = Client(
-                os.getenv("API_KEY_TEST"),
-                os.getenv("API_SECRET_TEST"),
+                os.getenv("API_SPOT"),
+                os.getenv("API_SPOT_SECRET"),
                 testnet=True,
             )
         else:

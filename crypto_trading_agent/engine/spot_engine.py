@@ -69,6 +69,7 @@ class SpotEngine:
                     entry = Decimal(str(trade["entry"]))
                     sl = Decimal(str(trade["sl"]))
                     tp = Decimal(str(trade["tp"]))
+                    stop_limit = Decimal(str(trade.get["stop_limit"]))
 
                     if sl >= entry or tp <= entry:
                         print("Skipped trade: invalid TP/SL levels for spot long.")
@@ -90,6 +91,7 @@ class SpotEngine:
                         qty_base=filled_qty,
                         take_profit_price=float(tp),
                         stop_price=float(sl),
+                        stop_limit=float(stop_limit),
                     )
 
                     self.open_trade = {
@@ -100,6 +102,7 @@ class SpotEngine:
                         "bars_open": 0,
                         "sl": float(sl),
                         "tp": float(tp),
+                        "stop_limit": float(stop_limit),
                         "entry_time": datetime.now(timezone.utc),
                         "oco_order": oco,
                     }

@@ -64,6 +64,7 @@ class SpotStrategy(MyStrategy):
             atr_mult_tp = 1.5
             atr_mult_sl = 1.0
             min_rr = 1.2
+        min_rr = max(self.min_rr, min_rr)
 
         tp, stop, stop_limit = dynamic_tp_sl_long_oco(
             entry,
@@ -117,67 +118,85 @@ class SpotStrategy(MyStrategy):
             score += 0.1 if indicators["fib_bounce"] else 0.0
             return score
 
+        candidates = []
+
         if regime == "trend" and trend_long and rr_long >= min_rr:
             score = score_setup(bull_pattern, bull_ind)
             if score >= 0.7:
-                return {
-                    "signal": "long",
-                    "entry": entry,
-                    "sl": stop,
-                    "tp": tp,
-                    "stop_limit": stop_limit,
-                    "rr": rr_long,
-                    "atr": curr["atr"],
-                    "regime": regime,
-                    "score": score,
-                    "volatility_ok": atr_ok,
-                    "has_pattern": bull_pattern,
-                }
+                candidates.append(
+                    {
+                        "signal": "long",
+                        "entry": entry,
+                        "sl": stop,
+                        "tp": tp,
+                        "stop_limit": stop_limit,
+                        "rr": rr_long,
+                        "atr": curr["atr"],
+                        "regime": regime,
+                        "score": score,
+                        "volatility_ok": atr_ok,
+                        "has_pattern": bull_pattern,
+                    }
+                )
 
         if regime == "trend" and trend_short:
             score = score_setup(bear_pattern, bear_ind)
             if score >= 0.7:
-                return {
-                    "signal": "short",
-                    "entry": entry,
-                    "atr": curr["atr"],
-                    "regime": regime,
-                    "score": score,
-                    "volatility_ok": atr_ok,
-                    "has_pattern": bear_pattern,
-                }
+                candidates.append(
+                    {
+                        "signal": "short",
+                        "entry": entry,
+                        "atr": curr["atr"],
+                        "regime": regime,
+                        "score": score,
+                        "volatility_ok": atr_ok,
+                        "has_pattern": bear_pattern,
+                    }
+                )
 
         if regime == "range" and range_long and rr_long >= min_rr:
             score = score_setup(bull_pattern, bull_ind)
             if score >= 0.7:
-                return {
-                    "signal": "long",
-                    "entry": entry,
-                    "sl": stop,
-                    "tp": tp,
-                    "stop_limit": stop_limit,
-                    "rr": rr_long,
-                    "atr": curr["atr"],
-                    "regime": regime,
-                    "score": score,
-                    "volatility_ok": atr_ok,
-                    "has_pattern": bull_pattern,
-                }
+                candidates.append(
+                    {
+                        "signal": "long",
+                        "entry": entry,
+                        "sl": stop,
+                        "tp": tp,
+                        "stop_limit": stop_limit,
+                        "rr": rr_long,
+                        "atr": curr["atr"],
+                        "regime": regime,
+                        "score": score,
+                        "volatility_ok": atr_ok,
+                        "has_pattern": bull_pattern,
+                    }
+                )
 
         if regime == "range" and range_short:
             score = score_setup(bear_pattern, bear_ind)
             if score >= 0.7:
-                return {
-                    "signal": "short",
-                    "entry": entry,
-                    "atr": curr["atr"],
-                    "regime": regime,
-                    "score": score,
-                    "volatility_ok": atr_ok,
-                    "has_pattern": bear_pattern,
-                }
+                candidates.append(
+                    {
+                        "signal": "short",
+                        "entry": entry,
+                        "atr": curr["atr"],
+                        "regime": regime,
+                        "score": score,
+                        "volatility_ok": atr_ok,
+                        "has_pattern": bear_pattern,
+                    }
+                )
 
-        return {"signal": None}
+        if not candidates:
+            return {"signal": None}
+
+        candidates = [trade for trade in candidates if self._filter_trade(trade).get("signal")]
+        if not candidates:
+            return {"signal": None}
+
+        best = max(candidates, key=lambda trade: (trade["score"], trade.get("rr", 0)))
+        return best
 
     def _filter_trade(self, trade):
         if not trade or trade.get("signal") != "long":

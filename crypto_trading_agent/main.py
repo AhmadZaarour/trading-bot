@@ -3,6 +3,7 @@ from engine.data import BinanceDataProvider, SpotDataProvider
 from engine.spot_broker import SpotBroker
 from strategy.basic_strategy import MyStrategy
 from strategy.spot_strategy import SpotStrategy
+from strategy.adaptive_strategy import AdaptiveFuturesStrategy, AdaptiveSpotStrategy
 from engine.engine import Engine
 from engine.spot_engine import SpotEngine
 from engine.risk import RiskManager
@@ -13,8 +14,8 @@ import yaml
 
 
 def main():
-    futures_strategy = MyStrategy()
-    spot_strategy = SpotStrategy()
+    futures_strategy = AdaptiveFuturesStrategy()
+    spot_strategy = AdaptiveSpotStrategy()
 
     with open("config/default.yaml", "r") as file:
         config = yaml.safe_load(file)

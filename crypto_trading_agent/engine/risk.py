@@ -7,7 +7,7 @@ class RiskManager():
     def ensure_leverage(self, symbol: str, leverage: int):
 
         try:
-            self.broker.futures_change_leverage(symbol=symbol, leverage=leverage)
+            self.broker.set_leverage(symbol=symbol, leverage=leverage)
             print(f"Leverage set to {leverage}x for {symbol}.")
 
         except Exception as e:

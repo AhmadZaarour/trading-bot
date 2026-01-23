@@ -31,6 +31,9 @@ class BinanceFuturesBroker(Broker):
                     "minQty": float(s["filters"][1]["minQty"]),
                 }
         raise ValueError(f"Symbol {symbol} not found")
+    
+    def set_leverage(self, symbol: str, leverage: int) -> None:
+        self.client.futures_change_leverage(symbol=symbol, leverage=leverage)
 
     def get_balance(self) -> float:
         balances = self.client.futures_account_balance()

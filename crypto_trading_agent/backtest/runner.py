@@ -21,9 +21,14 @@ class Backtester:
         self.balance = initial_balance
         self.equity_curve = []
         self.trades = []
+        backtest_cfg = config.get("BACKTEST", {})
+        self.taker_fee = float(backtest_cfg.get("TAKER_FEE", 0.0004))
+        self.slippage_bps = float(backtest_cfg.get("SLIPPAGE_BPS", 5))
+        self.slippage_pct = self.slippage_bps / 10000.0
 
     def simulate(self):
         open_trade = None
+        pending_signal = None
         df = self.data.latest_df(self.symbol, self.interval, self.limit)
         if df.empty:
             print("No data for backtest.")
@@ -33,6 +38,42 @@ class Backtester:
 
         i = self.lookback
         while i < len(df):
+            if pending_signal:
+                entry_row = df.iloc[i]
+                entry_price = float(entry_row["open"])
+                side = pending_signal["side"]
+                sl = pending_signal["sl"]
+                tp = pending_signal["tp"]
+                if not self._valid_trade_levels(side, entry_price, sl, tp):
+                    pending_signal = None
+                    i += 1
+                    continue
+
+                qty = self.risk.safe_position_size(
+                    entry_price,
+                    sl,
+                    self.balance,
+                    self.broker.get_filters(self.symbol),
+                    self.leverage,
+                    self.risk_per_trade,
+                )
+                if qty > 0:
+                    execution_price = self._apply_slippage(entry_price, side, is_entry=True)
+                    entry_fee = self._calc_fee(execution_price, qty)
+                    self.balance -= entry_fee
+                    open_trade = {
+                        "side": side,
+                        "entry": execution_price,
+                        "sl": sl,
+                        "tp": tp,
+                        "bars_open": 0,
+                        "qty": qty,
+                        "entry_time": df.index[i],
+                        "entry_fee": entry_fee,
+                    }
+                    self.equity_curve.append(self.balance)
+                pending_signal = None
+
             if open_trade:
                 # manage trade exits
                 open_trade["bars_open"] += 1
@@ -62,19 +103,15 @@ class Backtester:
                 if not self._valid_trade_levels(signal["signal"], entry, sl, tp):
                     i += 1
                     continue
+                if i + 1 >= len(df):
+                    break
 
-                qty = self.risk.safe_position_size(entry, sl, self.balance, self.broker.get_filters(self.symbol), self.leverage, self.risk_per_trade)
-                if qty > 0:
-                    open_trade = {
-                        "side": signal["signal"],
-                        "entry": entry,
-                        "sl": sl,
-                        "tp": tp,
-                        "bars_open": 0,
-                        "qty": qty,
-                        "entry_time": df.index[i],
-                    }
-                i += 1  # Move to next bar after signal evaluation
+                pending_signal = {
+                    "side": signal["signal"],
+                    "sl": sl,
+                    "tp": tp,
+                }
+                i += 1  # Move to next bar for execution
 
         return self.trades, self.equity_curve
     
@@ -159,16 +196,20 @@ class Backtester:
         return df
 
     def _close_trade(self, trade, exit_price, df, i):
-
+        execution_price = self._apply_slippage(exit_price, trade["side"], is_entry=False)
         if trade["side"] == "long":
-            pnl = (exit_price - trade["entry"]) * trade["qty"]
+            gross_pnl = (execution_price - trade["entry"]) * trade["qty"]
         else:
-            pnl = (trade["entry"] - exit_price) * trade["qty"]
+            gross_pnl = (trade["entry"] - execution_price) * trade["qty"]
 
+        exit_fee = self._calc_fee(execution_price, trade["qty"])
+        pnl = gross_pnl - exit_fee
         self.balance += pnl
-        trade["exit_price"] = exit_price
+        trade["exit_price"] = execution_price
         trade["exit_time"] = df.index[i]
-        trade["pnl"] = pnl
+        trade["gross_pnl"] = gross_pnl
+        trade["exit_fee"] = exit_fee
+        trade["pnl"] = pnl - trade.get("entry_fee", 0.0)
         self.trades.append(trade)
         self.equity_curve.append(self.balance)
 
@@ -201,3 +242,16 @@ class Backtester:
             if low <= tp:
                 return tp
         return None
+
+    def _apply_slippage(self, price: float, side: str, is_entry: bool) -> float:
+        if self.slippage_pct <= 0:
+            return price
+
+        if side == "long":
+            return price * (1 + self.slippage_pct) if is_entry else price * (1 - self.slippage_pct)
+        return price * (1 - self.slippage_pct) if is_entry else price * (1 + self.slippage_pct)
+
+    def _calc_fee(self, price: float, qty: float) -> float:
+        if self.taker_fee <= 0:
+            return 0.0
+        return price * qty * self.taker_fee

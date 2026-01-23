@@ -98,6 +98,13 @@ class SpotBroker(Broker):
             return value
         return (value / step).to_integral_value(rounding=ROUND_DOWN) * step
 
+    @staticmethod
+    def _format_decimal(value: Decimal) -> str:
+        """
+        Format Decimal without scientific notation (Binance rejects 1E-8 style strings).
+        """
+        return format(value, "f")
+
     def round_qty_price(
         self, symbol: str, qty: Decimal, price: Optional[Decimal] = None
     ) -> Tuple[Decimal, Optional[Decimal]]:
@@ -141,7 +148,7 @@ class SpotBroker(Broker):
             symbol=symbol,
             side="BUY",
             type="MARKET",
-            quoteOrderQty=str(quote),
+            quoteOrderQty=self._format_decimal(quote),
             newOrderRespType="FULL",
         )
 
@@ -190,7 +197,7 @@ class SpotBroker(Broker):
             symbol=symbol,
             side="SELL",
             type="MARKET",
-            quantity=str(q_rounded),
+            quantity=self._format_decimal(q_rounded),
             newOrderRespType="FULL",
         )
 
@@ -243,10 +250,10 @@ class SpotBroker(Broker):
         return self.client.create_oco_order(
             symbol=symbol,
             side="SELL",
-            quantity=str(qty),
-            price=str(tp),
-            stopPrice=str(sp),
-            stopLimitPrice=str(slp),
+            quantity=self._format_decimal(qty),
+            price=self._format_decimal(tp),
+            stopPrice=self._format_decimal(sp),
+            stopLimitPrice=self._format_decimal(slp),
             stopLimitTimeInForce="GTC",
         )
 

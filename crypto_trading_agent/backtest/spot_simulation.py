@@ -31,7 +31,7 @@ class SpotBacktester:
     def simulate(self):
         open_trade = None
         pending_signal = None
-        df = self.data.latest_df(self.symbol, self.interval, self.limit)
+        df = pd.read_csv("past_data/spot_3y.csv")
         if df.empty:
             print("No data for spot backtest.")
             return self.trades, self.equity_curve

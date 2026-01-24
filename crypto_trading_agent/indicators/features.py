@@ -1,6 +1,7 @@
 import pandas as pd
 import ta
-from typing import List, Tuple
+import numpy as np
+from typing import List, Tuple, Optional
 from .patterns_short import *
 from .patterns_long import *
 
@@ -97,33 +98,46 @@ def dynamic_tp_sl(
     atr: float,
     atr_mult_sl: float = 1.0,
     atr_mult_tp: float = 2.0,
-    tolerance_atr_mult: float = 2.0,  # only accept S/R within 2*ATR of entry
+    tolerance_atr_mult: float = 2.0,
+    tp_buffer: float = 0.002,  # 0.2%
+    sl_buffer: float = 0.002,  # 0.2%
 ) -> Tuple[float, float, float, float]:
-    sl_long_raw = entry - atr_mult_sl * atr
-    tp_long_raw = entry + atr_mult_tp * atr
-    sl_short_raw = entry + atr_mult_sl * atr
-    tp_short_raw = entry - atr_mult_tp * atr
+    if atr <= 0:
+        atr = entry * 0.002
 
-    nearest_res_above = min([r for r in (r_levels or []) if r > entry], default=None)
-    nearest_sup_below = max([s for s in (s_levels or []) if s < entry], default=None)
+    sl_long = entry - atr_mult_sl * atr
+    tp_long = entry + atr_mult_tp * atr
+    sl_short = entry + atr_mult_sl * atr
+    tp_short = entry - atr_mult_tp * atr
 
-    # Long
-    sl_long = sl_long_raw
-    if nearest_sup_below and (entry - nearest_sup_below) <= tolerance_atr_mult * atr:
-        sl_long = nearest_sup_below
-    tp_long = tp_long_raw
-    if nearest_res_above and (nearest_res_above - entry) <= tolerance_atr_mult * atr:
-        tp_long = nearest_res_above
+    nearest_res_above = min((r for r in (r_levels or []) if r > entry), default=None)
+    nearest_sup_below = max((s for s in (s_levels or []) if s < entry), default=None)
 
-    # Short
-    sl_short = sl_short_raw
-    if nearest_res_above and (nearest_res_above - entry) <= tolerance_atr_mult * atr:
-        sl_short = nearest_res_above
-    tp_short = tp_short_raw
-    if nearest_sup_below and (entry - nearest_sup_below) <= tolerance_atr_mult * atr:
-        tp_short = nearest_sup_below
+    # Long: snap with buffers
+    if nearest_sup_below is not None and (entry - nearest_sup_below) <= tolerance_atr_mult * atr:
+        sl_long = nearest_sup_below * (1.0 - sl_buffer)
+    if nearest_res_above is not None and (nearest_res_above - entry) <= tolerance_atr_mult * atr:
+        tp_long = nearest_res_above * (1.0 - tp_buffer)
+
+    # Short: snap with buffers
+    if nearest_res_above is not None and (nearest_res_above - entry) <= tolerance_atr_mult * atr:
+        sl_short = nearest_res_above * (1.0 + sl_buffer)
+    if nearest_sup_below is not None and (entry - nearest_sup_below) <= tolerance_atr_mult * atr:
+        tp_short = nearest_sup_below * (1.0 + tp_buffer)
+
+    # sanity
+    if tp_long <= entry:
+        tp_long = entry + atr_mult_tp * atr
+    if sl_long >= entry:
+        sl_long = entry - atr_mult_sl * atr
+
+    if tp_short >= entry:
+        tp_short = entry - atr_mult_tp * atr
+    if sl_short <= entry:
+        sl_short = entry + atr_mult_sl * atr
 
     return float(tp_long), float(sl_long), float(tp_short), float(sl_short)
+
 
 # ==== Core Logic ====
 def get_bearish_indicators(df, i, prev2, prev1, curr, volume_ma):
@@ -194,16 +208,11 @@ def get_bullish_indicators(df, i, prev2, prev1, curr, volume_ma):
     return has_bullish_pattern, indicators, s_levels
 
 def rr_for(direction, entry, tp, sl):
-    """Risk/Reward with sanity checks."""
-    if direction == "long" and sl and tp and sl < entry < tp:
+    if direction == "long" and sl is not None and tp is not None and sl < entry < tp:
         return (tp - entry) / (entry - sl)
-    if direction == "short" and sl and tp and tp < entry < sl:
+    if direction == "short" and sl is not None and tp is not None and tp < entry < sl:
         return (entry - tp) / (sl - entry)
     return 0.0
-
-from typing import List, Tuple, Optional
-import numpy as np
-import pandas as pd
 
 def _cluster_levels(values: np.ndarray, tol_pct: float, min_touches: int) -> List[Tuple[float, int]]:
     """

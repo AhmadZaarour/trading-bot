@@ -28,9 +28,11 @@ class Backtester:
         self.equity_curve = []
         self.trades = []
 
-        backtest_cfg = config.get("BACKTEST", {})
-        self.taker_fee = float(backtest_cfg.get("TAKER_FEE", 0.0004))
-        self.slippage_bps = float(backtest_cfg.get("SLIPPAGE_BPS", 5))
+        #backtest_cfg = config.get("BACKTEST", {})
+        #self.taker_fee = float(backtest_cfg.get("TAKER_FEE", 0.0004))
+        #self.slippage_bps = float(backtest_cfg.get("SLIPPAGE_BPS", 5))
+        self.slippage_bps = 5
+        self.taker_fee = 0.0004
         self.slippage_pct = self.slippage_bps / 10000.0
 
     # ------------------------- Core Simulation -------------------------
@@ -39,7 +41,8 @@ class Backtester:
         open_trade = None
         pending_signal = None
 
-        df = pd.read_csv("past_data/futures_3y.csv")
+        #df = pd.read_csv("past_data/futures_3y.csv")
+        df = self.data.latest_df(symbol=self.symbol, interval=self.interval, limit=self.limit)
         if df.empty:
             print("No data for backtest.")
             return self.trades, self.equity_curve
@@ -84,7 +87,6 @@ class Backtester:
                             "side": side,
                             "entry": exec_entry,
                             "sl": sl,
-                            "sl_initial": sl,  # original risk reference
                             "tp": tp,
                             "bars_open": 0,
                             "qty": float(qty),
@@ -109,18 +111,7 @@ class Backtester:
                         self._close_trade(open_trade, exit_price, df, i)
                         open_trade = None
                     else:
-                        # Then update stop for NEXT bars only
-                        open_trade["sl"] = self._move_sl_best_practice(
-                            side=open_trade["side"],
-                            entry=open_trade["entry"],
-                            sl_initial=open_trade["sl_initial"],
-                            sl_current=open_trade["sl"],
-                            bar_high=float(row["high"]),
-                            bar_low=float(row["low"]),
-                            r_trigger_be=1.0,
-                            r_trigger_trail=2.0,
-                            be_buffer=0.0,
-                        )
+                        continue
 
             # 3) If flat and no pending signal, evaluate signal at bar close -> schedule for next bar
             if open_trade is None and pending_signal is None:

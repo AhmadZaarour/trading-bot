@@ -138,6 +138,17 @@ def dynamic_tp_sl(
 
     return float(tp_long), float(sl_long), float(tp_short), float(sl_short)
 
+def simple_tp_sl(entry: float, signal: str, s_levels: List[float], r_levels: List[float]):
+    if signal == "long":
+        tp = r_levels if r_levels else entry * 1.02
+        sl = entry * 0.98
+    elif signal == "short":
+        tp = s_levels if s_levels else entry * 0.98
+        sl = entry * 1.02
+    else:
+        raise ValueError("Signal must be 'long' or 'short'")
+
+    return float(tp), float(sl)
 
 # ==== Core Logic ====
 def get_bearish_indicators(df, i, prev2, prev1, curr, volume_ma):
@@ -251,8 +262,8 @@ def get_support_levels(
     df: pd.DataFrame,
     i: int,
     curr,
-    lookback: int = 200,
-    min_touches: int = 4,
+    lookback: int = 15,
+    min_touches: int = 3,
     top_n: int = 1,
 ) -> List[float]:
     if i < lookback:
@@ -276,8 +287,8 @@ def get_resistance_levels(
     df: pd.DataFrame,
     i: int,
     curr,
-    lookback: int = 200,
-    min_touches: int = 4,
+    lookback: int = 15,
+    min_touches: int = 3,
     top_n: int = 1,
 ) -> List[float]:
     if i < lookback:

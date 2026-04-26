@@ -6,6 +6,7 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
+import json
 import sys
 
 import pandas as pd
@@ -129,6 +130,38 @@ def render_page(params: dict[str, str]) -> str:
         df = load_ohlcv(dataset)
         strategy = build_strategy(strategy_name)
         inspect_index = max(205, min(inspect_index, len(df) - 1))
+        chart_df = df.tail(140).copy()
+        labels = [str(i) for i in chart_df.index]
+        close_series = [round(float(v), 6) for v in chart_df["close"].tolist()]
+        ema20_series = [round(float(v), 6) for v in chart_df["ema_20"].tolist()]
+        ema50_series = [round(float(v), 6) for v in chart_df["ema_50"].tolist()]
+        rsi_series = [round(float(v), 4) for v in chart_df["rsi"].tolist()]
+
+        labels_js = json.dumps(labels)
+        close_js = json.dumps(close_series)
+        ema20_js = json.dumps(ema20_series)
+        ema50_js = json.dumps(ema50_series)
+        rsi_js = json.dumps(rsi_series)
+
+        latest = df.iloc[-1]
+        prev = df.iloc[-2]
+        pct = ((float(latest["close"]) - float(prev["close"])) / max(float(prev["close"]), 1e-12)) * 100
+        market_cards = (
+            "<div class='metrics'>"
+            f"<div class='metric'><span>Last Close</span><strong>{float(latest['close']):.6f}</strong></div>"
+            f"<div class='metric'><span>24h Candle Change*</span><strong>{pct:+.2f}%</strong></div>"
+            f"<div class='metric'><span>RSI</span><strong>{float(latest['rsi']):.2f}</strong></div>"
+            f"<div class='metric'><span>ATR</span><strong>{float(latest['atr']):.6f}</strong></div>"
+            "</div>"
+            "<small style='color:#8ea3ce'>*based on latest two rows in loaded dataset.</small>"
+        )
+
+        df_view = (
+            df[["open", "high", "low", "close", "volume", "rsi", "atr"]]
+            .tail(8)
+            .round(6)
+            .to_html(classes="data-table", border=0)
+        )
 
         if action == "backtest":
             trades, final_balance = toy_backtest(df, strategy, lookback, risk, max_bars, start_balance)
@@ -156,6 +189,9 @@ def render_page(params: dict[str, str]) -> str:
                 "</div>"
             )
     except Exception as exc:
+        labels_js = close_js = ema20_js = ema50_js = rsi_js = "[]"
+        market_cards = "<div class='card error'><h3>Market Snapshot</h3><p>Unavailable</p></div>"
+        df_view = "<p>No table data.</p>"
         result_html = (
             "<div class='card error'>"
             "<h3>Error</h3>"
@@ -168,6 +204,7 @@ def render_page(params: dict[str, str]) -> str:
 <html>
 <head>
   <meta name='viewport' content='width=device-width, initial-scale=1' />
+  <script src='https://cdn.jsdelivr.net/npm/chart.js'></script>
   <style>
     :root {{
       --bg:#070b17;
@@ -233,13 +270,29 @@ def render_page(params: dict[str, str]) -> str:
     .footer {{ margin-top: 1rem; color:var(--muted); font-size:.85rem; }}
     .footer a {{ color: var(--accent); text-decoration:none; }}
     .error {{ border-color:#5a2644; }}
+    .gold {{
+      color:#ffd56c;
+      text-shadow:0 0 16px rgba(255,213,108,.25);
+    }}
+    .metrics strong {{ color:#ffd56c; }}
+    .chart-wrap {{ height: 260px; }}
+    .data-table {{
+      width:100%; border-collapse: collapse; font-size:.85rem; margin-top:.7rem;
+      overflow:hidden;
+    }}
+    .data-table th, .data-table td {{
+      border:1px solid var(--border); padding:.45rem .5rem; text-align:right;
+      background:#0a1020;
+    }}
+    .data-table th {{ color:#ffe29a; text-align:center; background:#11192f; }}
+    .stack {{ display:grid; grid-template-columns: 1fr; gap: 12px; }}
   </style>
 </head>
 <body>
   <div class='wrap'>
     <div class='hero'>
-      <h2>Trading Bot — Quantum Console</h2>
-      <div class='sub'>Futuristic web tester for signal inspection and quick strategy sanity checks.</div>
+      <h2 class='gold'>Trading Bot — BlackGold Quantum Terminal</h2>
+      <div class='sub'>Professional, futuristic research console for signal inspection and rapid strategy testing.</div>
     </div>
     <div class='grid'>
       <div class='card form-card'>
@@ -276,10 +329,73 @@ def render_page(params: dict[str, str]) -> str:
           </div>
         </form>
       </div>
+      <div class='result-card stack'>
+        <div class='card'><h3 class='gold'>Market Snapshot</h3>{market_cards}</div>
+        <div class='card'>
+          <h3 class='gold'>Price + EMA Chart</h3>
+          <div class='chart-wrap'><canvas id='priceChart'></canvas></div>
+        </div>
+        <div class='card'>
+          <h3 class='gold'>RSI Chart</h3>
+          <div class='chart-wrap'><canvas id='rsiChart'></canvas></div>
+        </div>
+      </div>
+    </div>
+    <div class='grid' style='margin-top:12px'>
+      <div class='card form-card'>
+        <h3 class='gold'>Latest DataFrame Rows</h3>
+        {df_view}
+      </div>
       <div class='result-card'>{result_html}</div>
     </div>
     <div class='footer'>Health check: <a href='/health'>/health</a></div>
   </div>
+  <script>
+    const labels = {labels_js};
+    const closeData = {close_js};
+    const ema20Data = {ema20_js};
+    const ema50Data = {ema50_js};
+    const rsiData = {rsi_js};
+
+    const priceCtx = document.getElementById('priceChart');
+    if (priceCtx) {{
+      new Chart(priceCtx, {{
+        type: 'line',
+        data: {{
+          labels,
+          datasets: [
+            {{ label:'Close', data: closeData, borderColor:'#ffd56c', borderWidth:2, pointRadius:0 }},
+            {{ label:'EMA 20', data: ema20Data, borderColor:'#4fc8ff', borderWidth:1.5, pointRadius:0 }},
+            {{ label:'EMA 50', data: ema50Data, borderColor:'#9a89ff', borderWidth:1.5, pointRadius:0 }},
+          ]
+        }},
+        options: {{
+          responsive:true, maintainAspectRatio:false,
+          plugins: {{ legend: {{ labels: {{ color:'#dce6ff' }} }} }},
+          scales: {{
+            x: {{ ticks: {{ display:false }}, grid: {{ color:'#1a2540' }} }},
+            y: {{ ticks: {{ color:'#dce6ff' }}, grid: {{ color:'#1a2540' }} }}
+          }}
+        }}
+      }});
+    }}
+
+    const rsiCtx = document.getElementById('rsiChart');
+    if (rsiCtx) {{
+      new Chart(rsiCtx, {{
+        type: 'line',
+        data: {{ labels, datasets: [{{ label:'RSI', data:rsiData, borderColor:'#67f9b3', pointRadius:0, borderWidth:1.8 }}] }},
+        options: {{
+          responsive:true, maintainAspectRatio:false,
+          plugins: {{ legend: {{ labels: {{ color:'#dce6ff' }} }} }},
+          scales: {{
+            x: {{ ticks: {{ display:false }}, grid: {{ color:'#1a2540' }} }},
+            y: {{ min:0, max:100, ticks: {{ color:'#dce6ff' }}, grid: {{ color:'#1a2540' }} }}
+          }}
+        }}
+      }});
+    }}
+  </script>
 </body>
 </html>
 """
@@ -288,6 +404,35 @@ def render_page(params: dict[str, str]) -> str:
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
+        query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+
+        if parsed.path in ("/api/market", "/market"):
+            try:
+                dataset = query.get("dataset", "futures")
+                df = load_ohlcv(dataset)
+                latest = df.iloc[-1]
+                payload = {
+                    "dataset": dataset,
+                    "rows": int(len(df)),
+                    "latest": {
+                        "close": float(latest["close"]),
+                        "rsi": float(latest["rsi"]),
+                        "atr": float(latest["atr"]),
+                        "adx": float(latest["adx"]),
+                    },
+                }
+                data = json.dumps(payload).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(data)
+                return
+            except Exception as exc:
+                self.send_response(500)
+                self.send_header("Content-type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(exc)}).encode("utf-8"))
+                return
 
         if parsed.path in ("/health", "/api/health"):
             self.send_response(200)
@@ -297,7 +442,6 @@ class handler(BaseHTTPRequestHandler):
             return
 
         if parsed.path in ("/", "/api", "/api/"):
-            query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
             page = render_page(query).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")

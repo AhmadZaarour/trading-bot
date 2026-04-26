@@ -8,6 +8,7 @@ from typing import Optional
 from urllib.parse import parse_qs, urlparse
 import json
 import sys
+import os
 
 import pandas as pd
 
@@ -19,6 +20,8 @@ if str(APP_DIR) not in sys.path:
 from indicators.features import add_indicators  # noqa: E402
 from strategy.adaptive_strategy import AdaptiveFuturesStrategy, AdaptiveSpotStrategy  # noqa: E402
 from strategy.simple_strategy import SimpleStrategy  # noqa: E402
+
+STORE_PATH = Path(os.getenv("TB_SESSION_STORE", "/tmp/trading_bot_sessions.json"))
 
 
 @dataclass
@@ -115,6 +118,40 @@ def toy_backtest(df: pd.DataFrame, strategy, lookback: int, risk: float, max_bar
     return trades, balance
 
 
+def load_store() -> list[dict]:
+    if not STORE_PATH.exists():
+        return []
+    try:
+        return json.loads(STORE_PATH.read_text())
+    except Exception:
+        return []
+
+
+def save_store(rows: list[dict]) -> None:
+    STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    STORE_PATH.write_text(json.dumps(rows[-300:], ensure_ascii=False))
+
+
+def recommend_strategy(rows: list[dict]) -> str:
+    if not rows:
+        return "Not enough saved comparisons yet."
+    grouped: dict[str, list[dict]] = {}
+    for r in rows:
+        grouped.setdefault(r.get("strategy", "unknown"), []).append(r)
+
+    scores = []
+    for strat, vals in grouped.items():
+        pnls = [float(v.get("pnl", 0.0)) for v in vals]
+        wins = [1.0 if float(v.get("win_rate", 0.0)) >= 50 else 0.0 for v in vals]
+        trades = [float(v.get("trades", 0)) for v in vals]
+        score = (sum(pnls) / max(len(pnls), 1)) + (sum(wins) * 10) + (sum(trades) / max(len(trades), 1))
+        scores.append((score, strat, len(vals)))
+
+    scores.sort(reverse=True, key=lambda x: x[0])
+    best = scores[0]
+    return f"Suggested strategy: {best[1]} (based on {best[2]} saved runs)."
+
+
 def render_page(params: dict[str, str]) -> str:
     dataset = params.get("dataset", "futures")
     strategy_name = params.get("strategy", "simple")
@@ -180,6 +217,35 @@ def render_page(params: dict[str, str]) -> str:
                 "</div>"
                 "</div>"
             )
+        elif action == "save":
+            trades, final_balance = toy_backtest(df, strategy, lookback, risk, max_bars, start_balance)
+            wins = sum(1 for t in trades if t.pnl > 0)
+            win_rate = (wins / len(trades) * 100) if trades else 0.0
+            pnl = final_balance - start_balance
+            rows = load_store()
+            rows.append(
+                {
+                    "dataset": dataset,
+                    "strategy": strategy_name,
+                    "lookback": lookback,
+                    "risk": risk,
+                    "max_bars": max_bars,
+                    "start_balance": start_balance,
+                    "final_balance": final_balance,
+                    "pnl": pnl,
+                    "win_rate": win_rate,
+                    "trades": len(trades),
+                }
+            )
+            save_store(rows)
+            rec = recommend_strategy(rows)
+            result_html = (
+                "<div class='card'>"
+                "<h3>Run Saved</h3>"
+                f"<p>Saved comparison with PnL <b>{pnl:.2f}</b> and win rate <b>{win_rate:.2f}%</b>.</p>"
+                f"<p class='gold'>{escape(rec)}</p>"
+                "</div>"
+            )
         else:
             signal = strategy.test_evaluate(df, inspect_index)
             result_html = (
@@ -212,16 +278,16 @@ def render_page(params: dict[str, str]) -> str:
       --panel2:#0f1424;
       --text:#e8eeff;
       --muted:#9db0d8;
-      --accent:#57d5ff;
-      --accent2:#8a7dff;
-      --border:#1f2d4a;
+      --accent:#f3c35b;
+      --accent2:#b7892e;
+      --border:#4c3a1f;
     }}
     * {{ box-sizing: border-box; }}
     body {{
       margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
       color:var(--text);
-      background: radial-gradient(1200px 600px at 10% -10%, #1a2f63 0%, transparent 55%),
-                  radial-gradient(1000px 600px at 100% 0%, #2b175b 0%, transparent 50%),
+      background: radial-gradient(1200px 600px at 10% -10%, #2b200d 0%, transparent 55%),
+                  radial-gradient(1000px 600px at 100% 0%, #19120a 0%, transparent 50%),
                   var(--bg);
     }}
     .wrap {{ max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }}
@@ -244,6 +310,13 @@ def render_page(params: dict[str, str]) -> str:
       .form-card {{ grid-column: span 7; }}
       .result-card {{ grid-column: span 5; }}
     }}
+    @media (max-width: 700px) {{
+      .fields, .fields-3 {{ grid-template-columns: 1fr; }}
+      .btns {{ flex-direction: column; width: 100%; }}
+      button {{ width: 100%; }}
+      .metrics {{ grid-template-columns: 1fr; }}
+      .wrap {{ padding: 0 .65rem; }}
+    }}
     label {{ font-size: .85rem; color: var(--muted); display:block; margin-bottom:.35rem; }}
     input, select {{
       width:100%; background:#0a1020; color:var(--text); border:1px solid var(--border);
@@ -254,10 +327,10 @@ def render_page(params: dict[str, str]) -> str:
     .btns {{ margin-top:12px; display:flex; gap:10px; }}
     button {{
       border:0; border-radius:10px; padding:.7rem 1rem; font-weight:600; cursor:pointer;
-      color:#05101f; background:linear-gradient(90deg, var(--accent), #8cf8ff);
+      color:#1b1507; background:linear-gradient(90deg, var(--accent), #ffe6a8);
     }}
     button.secondary {{
-      color:#fff; background:linear-gradient(90deg, var(--accent2), #a289ff);
+      color:#fff3d0; background:linear-gradient(90deg, var(--accent2), #6b5322);
     }}
     .metrics {{ display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; }}
     .metric {{ background:#0a1020; border:1px solid var(--border); border-radius:10px; padding:.65rem; }}
@@ -271,7 +344,7 @@ def render_page(params: dict[str, str]) -> str:
     .footer a {{ color: var(--accent); text-decoration:none; }}
     .error {{ border-color:#5a2644; }}
     .gold {{
-      color:#ffd56c;
+      color:#f7cf78;
       text-shadow:0 0 16px rgba(255,213,108,.25);
     }}
     .metrics strong {{ color:#ffd56c; }}
@@ -292,7 +365,7 @@ def render_page(params: dict[str, str]) -> str:
   <div class='wrap'>
     <div class='hero'>
       <h2 class='gold'>Trading Bot — BlackGold Quantum Terminal</h2>
-      <div class='sub'>Professional, futuristic research console for signal inspection and rapid strategy testing.</div>
+      <div class='sub'>Professional, futuristic research console for signal inspection, cash tracking, and rapid strategy testing.</div>
     </div>
     <div class='grid'>
       <div class='card form-card'>
@@ -325,6 +398,10 @@ def render_page(params: dict[str, str]) -> str:
             <div class='btns'>
               <button type='submit' name='action' value='signal'>Run Signal</button>
               <button class='secondary' type='submit' name='action' value='backtest'>Run Backtest</button>
+              <button class='secondary' type='submit' name='action' value='save'>Save Run + Compare</button>
+              <a href='/api/export?dataset={dataset}' style='text-decoration:none; width:100%'>
+                <button type='button' style='width:100%'>Export Useful Data</button>
+              </a>
             </div>
           </div>
         </form>
@@ -348,7 +425,7 @@ def render_page(params: dict[str, str]) -> str:
       </div>
       <div class='result-card'>{result_html}</div>
     </div>
-    <div class='footer'>Health check: <a href='/health'>/health</a></div>
+    <div class='footer'>Health check: <a href='/health'>/health</a> | Market API: <a href='/api/market?dataset={dataset}'>/api/market</a></div>
   </div>
   <script>
     const labels = {labels_js};
@@ -426,6 +503,29 @@ class handler(BaseHTTPRequestHandler):
                 self.send_header("Content-type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(data)
+                return
+            except Exception as exc:
+                self.send_response(500)
+                self.send_header("Content-type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(exc)}).encode("utf-8"))
+                return
+
+        if parsed.path in ("/api/export", "/export"):
+            try:
+                dataset = query.get("dataset", "futures")
+                df = load_ohlcv(dataset)
+                export = (
+                    df[["open", "high", "low", "close", "volume", "ema_20", "ema_50", "rsi", "atr", "adx"]]
+                    .tail(400)
+                    .round(8)
+                )
+                csv_data = export.to_csv(index=True).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-type", "text/csv; charset=utf-8")
+                self.send_header("Content-Disposition", f"attachment; filename={dataset}_useful_data.csv")
+                self.end_headers()
+                self.wfile.write(csv_data)
                 return
             except Exception as exc:
                 self.send_response(500)
